@@ -1,4 +1,4 @@
-# Investigating Sub-Patch Spatial Information
+# Characterizing Sub-Patch Spatial Information in Vision Foundation Model Representations and its Implications for Feature Upsampling.
 
 High-Level Computer Vision Project (Summer 2026)
 
