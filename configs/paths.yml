@@ -1,0 +1,7 @@
+imagenet_root: /path/to/imagenet
+
+cache_dir: cache/
+
+results_dir: results/
+
+checkpoints_dir: checkpoints/

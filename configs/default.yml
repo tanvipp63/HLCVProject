@@ -1,0 +1,12 @@
+# Image
+image_size: 224
+
+# Dataloader
+batch_size: 32
+num_workers: 4
+
+# Device
+device: cuda
+
+# Cache
+cache_features: true
