@@ -1,4 +1,4 @@
-imagenet_root: /path/to/imagenet
+imagenet_root: C:/Users/skcha/Datasets/imagenet/
 
 cache_dir: cache/
 
