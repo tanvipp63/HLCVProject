@@ -16,6 +16,7 @@ results/
 
 .DS_Store
 
+configs/paths.yml
 
 imagenet_val/
 Team17_Proposal_AnyUp.pdf
