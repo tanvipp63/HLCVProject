@@ -19,6 +19,14 @@ def main():
     )
 
     parser.add_argument(
+        "--layers",
+        type=int,
+        nargs="+",
+        default=None,
+        help="Intermediate layers to extract (e.g. 3 6 9 11). Defaults to final layer only.",
+    )
+
+    parser.add_argument(
         "--split",
         default="val",
     )
@@ -72,7 +80,7 @@ def main():
 
     extractor = FeatureExtractor(encoder)
 
-    output = extractor.extract(dataloader)
+    output = extractor.extract(dataloader, layers=args.layers)
 
     # ------------------------------
     # Save
