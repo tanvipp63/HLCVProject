@@ -77,6 +77,16 @@ def main():
     print(f"Patch size: {encoder.patch_size}")
     print(f"Embedding dimension: {encoder.embedding_dim}")
 
+    print("\n===== Intermediate Layers =====")
+
+    intermediate = encoder.extract_features(
+        images,
+        layers=[3, 6, 9, 11],
+    )
+
+    for layer, feat in intermediate.items():
+        print(f"Layer {layer}: {feat.shape}")
+
     print("\n✓ DINO test passed.")
 
 
