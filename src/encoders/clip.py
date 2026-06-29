@@ -96,18 +96,31 @@ class CLIPEncoder(BaseEncoder):
         # --------------------------------------------------
 
         if layers is None:
+            final_features = None
+
+            def final_hook(module, inputs, outputs):
+                nonlocal final_features
+
+                if isinstance(outputs, tuple):
+                    outputs = outputs[0]
+
+                if outputs.ndim == 2:
+                    outputs = outputs.unsqueeze(0)
+
+                if outputs.ndim >= 3:
+                    final_features = outputs[:, 1:, :].detach().cpu()
+
+            hook = model.transformer.resblocks[-1].register_forward_hook(final_hook)
+
             with torch.no_grad():
-                features = model(images)
+                _ = model(images)
 
-            if isinstance(features, tuple):
-                features = features[0]
+            hook.remove()
 
-            if features.ndim == 2:
-                features = features.unsqueeze(0)
+            if final_features is None:
+                raise RuntimeError("Failed to capture final CLIP patch-token features.")
 
-            return {
-                -1: features.cpu()
-            }
+            return {-1: final_features}
 
         # --------------------------------------------------
         # Intermediate layers
@@ -126,6 +139,9 @@ class CLIPEncoder(BaseEncoder):
 
                     if outputs.ndim == 2:
                         outputs = outputs.unsqueeze(0)
+
+                    if outputs.ndim >= 3:
+                        outputs = outputs[:, 1:, :]
 
                     intermediates[idx] = outputs.detach().cpu()
 
