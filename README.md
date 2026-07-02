@@ -34,6 +34,12 @@ The code is structured to support multiple backbones, including CLIP, DINOv2, an
    - `python scripts/extract_features.py --encoder clip --split val --layers 3 6 9 11`
    - or use the equivalent CLI in `src/anyup/anyup.py`
 
+5. Train probes per encoder and per layer of interest:
+   - `python scripts/train_probes.py
+
+6. Run Experiments:
+   - `python scripts/run_e1ANDe2.py
+
 ## Repository Layout
 
 - `configs/`
