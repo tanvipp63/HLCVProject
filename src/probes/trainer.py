@@ -4,7 +4,7 @@ from typing import Optional
 
 import torch
 from tqdm import tqdm
-
+from pathlib import Path
 
 class ProbeTrainer:
     """
@@ -88,18 +88,37 @@ class ProbeTrainer:
             running_loss += loss.item()
 
         return running_loss / len(dataloader)
+    
+    def save_checkpoint(
+        self,
+        path: str,
+        epoch: int,
+        val_loss: float
+    ) -> None:
+
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "epoch": epoch,
+                "val_loss": val_loss,
+            },
+            path,
+        )    
 
     def fit(
         self,
         train_loader,
         val_loader,
         epochs: int,
+        checkpoint_dir: str,
     ) -> dict:
 
         history = {
             "train_loss": [],
             "val_loss": [],
         }
+        best_val_loss = float("inf") #for saving best model
 
         for epoch in range(epochs):
 
@@ -108,6 +127,13 @@ class ProbeTrainer:
 
             history["train_loss"].append(train_loss)
             history["val_loss"].append(val_loss)
+
+            #Save best checkpoint
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                self.save_checkpoint(Path(checkpoint_dir) / "best_model.pth", epoch + 1, val_loss)
+
+                print(f"Saved best model at epoch {epoch + 1} (val loss = {val_loss:.6f})")            
 
             if self.scheduler is not None:
                 self.scheduler.step()
@@ -119,19 +145,6 @@ class ProbeTrainer:
             )
 
         return history
-
-    def save_checkpoint(
-        self,
-        path: str,
-    ) -> None:
-
-        torch.save(
-            {
-                "model_state_dict": self.model.state_dict(),
-                "optimizer_state_dict": self.optimizer.state_dict(),
-            },
-            path,
-        )
 
     def load_checkpoint(
         self,

@@ -29,7 +29,12 @@ class FeatureCache:
             Now changed to: cache/dino/val/layer3/features.pt
         """
 
-        encoder_dir = self.cache_dir / encoder_name / split / layer
+        encoder_dir = self.cache_dir / encoder_name / split
+        if layer == -1:
+            layer_dir = "final"
+        else:
+            layer_dir = f"layer{layer}"
+        encoder_dir = encoder_dir / layer_dir
         encoder_dir.mkdir(parents=True, exist_ok=True)
 
         # if layer == -1:
