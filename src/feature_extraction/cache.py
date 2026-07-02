@@ -25,6 +25,8 @@ class FeatureCache:
         Example:
             cache/dino/val_final.pt
             cache/dino/val_layer3.pt
+
+            Now changed to: cache/dino/val/layer3/features.pt
         """
 
         encoder_dir = self.cache_dir / encoder_name / split / layer
