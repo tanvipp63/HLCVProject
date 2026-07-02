@@ -27,13 +27,15 @@ class FeatureCache:
             cache/dino/val_layer3.pt
         """
 
-        encoder_dir = self.cache_dir / encoder_name
+        encoder_dir = self.cache_dir / encoder_name / split / layer
         encoder_dir.mkdir(parents=True, exist_ok=True)
 
-        if layer == -1:
-            filename = f"{split}_final.pt"
-        else:
-            filename = f"{split}_layer{layer}.pt"
+        # if layer == -1:
+        #     filename = f"{split}_final.pt"
+        # else:
+        #     filename = f"{split}_layer{layer}.pt"
+
+        filename = f"features.pt"
 
         return encoder_dir / filename
 
