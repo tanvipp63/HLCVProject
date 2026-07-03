@@ -91,7 +91,7 @@ class PatchTargets:
         encoder_name: str
     ) -> Path:
 
-        target_dir = self.cache_dir / split / encoder_name
+        target_dir = self.cache_dir / "targets" / split / encoder_name
         target_dir.mkdir(parents=True, exist_ok=True)
 
         return target_dir / f"{target_type}.pt"

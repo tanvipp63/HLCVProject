@@ -16,8 +16,7 @@ config = load_config("configs/paths.yaml")
 cache_dir = Path(config["cache_dir"])
 cache = FeatureCache(config["cache_dir"])
 
-# data = torch.load("C:\\Users\\tparu\\Documents\\Germany\\Uni\\High Level Computer Vision\\Project\\cache\\dino\\train\\layer3\\features.pt")
-# print(data)
+
 if __name__ == "__main__":
     #Arg parser
     parser = argparse.ArgumentParser()
@@ -67,32 +66,44 @@ if __name__ == "__main__":
     target_generator = PatchTargets(
         image_size=224,
         patch_size=encoder.patch_size,
+        cache_dir=cache_dir,
     )
+
+    all_rgb = []
+    all_edges = []
+    all_boundaries = []
         
     for image_idx, (image, _) in enumerate(dataloader):
         image = image[0]
 
         #Extract targets
         rgb = target_generator.extract_rgb_target(image)
-        edges = target_generator.extract_edge_target(image)
-        boundaries = target_generator.extract_boundary_target(image)
+        # edges = target_generator.extract_edge_target(image)
+        # boundaries = target_generator.extract_boundary_target(image)
+        all_rgb.append(rgb)
+        # all_edges.append(edges)
+        # all_boundaries.append(boundaries)
+    
+    all_rgb = torch.stack(all_rgb)
+    # all_edges = torch.stack(all_edges)
+    # all_boundaries = torch.stack(all_boundaries)
 
-        #Save targets
-        target_generator.save(
-            rgb,
-            split=args.split,
-            target_type="rgb",
-            encoder_name=args.encoder
-        )
-        target_generator.save(
-            edges,
-            split=args.split,
-            target_type="edges",
-            encoder_name=args.encoder
-        )
-        target_generator.save(
-            boundaries,
-            split=args.split,
-            target_type="boundaries",
-            encoder_name=args.encoder
-        )
+    #Save targets
+    target_generator.save(
+        all_rgb,
+        split=args.split,
+        target_type="rgb",
+        encoder_name=args.encoder
+    )
+    # target_generator.save(
+    #     all_edges,
+    #     split=args.split,
+    #     target_type="edges",
+    #     encoder_name=args.encoder
+    # )
+    # target_generator.save(
+    #     all_boundaries,
+    #     split=args.split,
+    #     target_type="boundaries",
+    #     encoder_name=args.encoder
+    # )
