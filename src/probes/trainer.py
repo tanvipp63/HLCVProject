@@ -131,7 +131,7 @@ class ProbeTrainer:
             #Save best checkpoint
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                self.save_checkpoint(Path(checkpoint_dir) / "best_model.pth", epoch + 1, val_loss)
+                self.save_checkpoint(Path(checkpoint_dir) / "best_model.pt", epoch + 1, val_loss)
 
                 print(f"Saved best model at epoch {epoch + 1} (val loss = {val_loss:.6f})")            
 
