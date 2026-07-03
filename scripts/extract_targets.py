@@ -11,7 +11,6 @@ from src.feature_extraction import FeatureExtractor, FeatureCache
 from src.patch_extraction import PatchExtractor
 from src.datasets import ImageNetDataset
 
-
 #Paths
 config = load_config("configs/paths.yaml")
 cache_dir = Path(config["cache_dir"])
@@ -27,17 +26,17 @@ if __name__ == "__main__":
         choices=["dino", "clip", "siglip"],
         required=True,
     )
-    parser.add_argument(
-        "--layers",
-        type=int,
-        nargs="+",
-        default=None,
-        help="Intermediate layers to extract (e.g. 3 6 9 11). Defaults to final layer only.",
-    )
+
     parser.add_argument(
         "--split",
         default="val",
     )
+
+    parser.add_argument(
+        "--max_samples",
+        type=int,
+        default=None,
+    )    
 
     args = parser.parse_args()
 
@@ -52,11 +51,12 @@ if __name__ == "__main__":
     else:
         encoder = SigLIPEncoder(device)
 
+
     dataset = ImageNetDataset(
         root=Path(config["imagenet_root"]),
         split=args.split,
         transform=encoder.get_transform(),
-        max_samples=1,
+        max_samples=args.max_samples,
     )
 
     dataloader = dataset.get_dataloader(
@@ -68,13 +68,31 @@ if __name__ == "__main__":
         image_size=224,
         patch_size=encoder.patch_size,
     )
-
-    for layer in args.layers:
-        features = cache.load(args.encoder, args.split, layer=layer)
         
-        for image_idx, (image, _) in enumerate(dataloader):
-            image = image[0]
+    for image_idx, (image, _) in enumerate(dataloader):
+        image = image[0]
 
-            rgb = target_generator.extract_rgb_target(image)
-            edges = target_generator.extract_edge_target(image)
-            boundaries = target_generator.extract_boundary_target(image)
+        #Extract targets
+        rgb = target_generator.extract_rgb_target(image)
+        edges = target_generator.extract_edge_target(image)
+        boundaries = target_generator.extract_boundary_target(image)
+
+        #Save targets
+        target_generator.save(
+            rgb,
+            split=args.split,
+            target_type="rgb",
+            encoder_name=args.encoder
+        )
+        target_generator.save(
+            edges,
+            split=args.split,
+            target_type="edges",
+            encoder_name=args.encoder
+        )
+        target_generator.save(
+            boundaries,
+            split=args.split,
+            target_type="boundaries",
+            encoder_name=args.encoder
+        )
