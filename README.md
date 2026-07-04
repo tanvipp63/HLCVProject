@@ -43,7 +43,7 @@ The code is structured to support multiple backbones, including CLIP, DINOv2, an
    - train by encoder, layer, target and num epochs.
 
 7. Run Experiments:
-   - `python scripts/run_e1ANDe2.py
+   - `python -m scripts.run_e1ANDe2 --encoder dino --layers 3 --target_type rgb`
 
 ## Repository Layout
 
