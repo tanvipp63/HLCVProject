@@ -5,7 +5,7 @@ from typing import Optional
 import torch
 import torchvision.transforms.functional as TF
 from pathlib import Path
-
+import kornia
 from .extractor import PatchExtractor
 
 
@@ -64,11 +64,32 @@ class PatchTargets:
         token_indices: Optional[int | list[int]] = None,
     ) -> torch.Tensor:
         """
-        Placeholder for edge target extraction.
+        Extract edge map patches corresponding to the specified tokens.
+
+        Args:
+            image: RGB image tensor of shape (3, H, W).
+            token_indices: Token(s) to extract. If None, extracts all patches.
+
+        Returns:
+            Tensor of edge patches.
         """
 
-        raise NotImplementedError(
-            "Edge target extraction not implemented yet."
+        # Convert RGB to grayscale
+        gray = TF.rgb_to_grayscale(image)
+
+        # Kornia expects a batch dimension
+        gray = gray.unsqueeze(0)
+
+        # Canny edge detector
+        _, edges = kornia.filters.canny(gray)
+
+        # Remove batch dimension
+        edges = edges.squeeze(0)
+
+        # Extract patches
+        return self.extractor.extract_patch(
+            image=edges,
+            token_indices=token_indices,
         )
 
     def extract_boundary_target(

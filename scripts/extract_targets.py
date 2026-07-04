@@ -78,14 +78,14 @@ if __name__ == "__main__":
 
         #Extract targets
         rgb = target_generator.extract_rgb_target(image)
-        # edges = target_generator.extract_edge_target(image)
+        edges = target_generator.extract_edge_target(image)
         # boundaries = target_generator.extract_boundary_target(image)
         all_rgb.append(rgb)
-        # all_edges.append(edges)
+        all_edges.append(edges)
         # all_boundaries.append(boundaries)
     
     all_rgb = torch.stack(all_rgb)
-    # all_edges = torch.stack(all_edges)
+    all_edges = torch.stack(all_edges)
     # all_boundaries = torch.stack(all_boundaries)
 
     #Save targets
@@ -95,12 +95,12 @@ if __name__ == "__main__":
         target_type="rgb",
         encoder_name=args.encoder
     )
-    # target_generator.save(
-    #     all_edges,
-    #     split=args.split,
-    #     target_type="edges",
-    #     encoder_name=args.encoder
-    # )
+    target_generator.save(
+        all_edges,
+        split=args.split,
+        target_type="edges",
+        encoder_name=args.encoder
+    )
     # target_generator.save(
     #     all_boundaries,
     #     split=args.split,
