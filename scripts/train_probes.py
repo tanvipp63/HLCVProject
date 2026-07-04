@@ -102,7 +102,7 @@ if __name__ == "__main__":
             layer_dir = "final"
         else:
             layer_dir = f"layer{layer}"
-        checkpoint_dir = Path(f"{config['checkpoints_dir']}/{args.encoder}/{layer_dir}")
+        checkpoint_dir = Path(f"{config['checkpoints_dir']}/{args.target_type}/{args.encoder}/{layer_dir}")
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         
         train_features = features_train["features"].reshape(-1, encoder.embedding_dim)
