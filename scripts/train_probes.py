@@ -98,13 +98,7 @@ if __name__ == "__main__":
         )        
 
         #Train
-        if layer == -1:
-            layer_dir = "final"
-        else:
-            layer_dir = f"layer{layer}"
-        checkpoint_dir = Path(f"{config['checkpoints_dir']}/{args.target_type}/{args.encoder}/{layer_dir}")
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        
+        checkpoint_dir = Path(f"{config['checkpoints_dir']}")
         train_features = features_train["features"].reshape(-1, encoder.embedding_dim)
         train_targets = targets_train.reshape(-1, targets_train.shape[2], encoder.patch_size, encoder.patch_size)
 
@@ -142,5 +136,8 @@ if __name__ == "__main__":
             val_loader=val_loader,
             epochs=args.num_epochs,
             checkpoint_dir=checkpoint_dir,
+            encoder_name=args.encoder,
+            layer=layer,
+            target_type=args.target_type
         )        
         print("Training complete.")

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Optional
-
 import torch
 from tqdm import tqdm
 from pathlib import Path
@@ -112,8 +111,18 @@ class ProbeTrainer:
         val_loader,
         epochs: int,
         checkpoint_dir: str,
+        encoder_name:str,
+        layer:int,
+        target_type:str
     ) -> dict:
-
+        
+        if layer == -1:
+            layer_dir = "final"
+        else:
+            layer_dir = f"layer{layer}"
+        checkpoint_dir = checkpoint_dir / target_type / encoder_name / layer_dir
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        
         history = {
             "train_loss": [],
             "val_loss": [],
