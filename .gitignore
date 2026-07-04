@@ -23,3 +23,5 @@ Team17_Proposal_AnyUp.pdf
 ILSVRC2012_img_val.tar
 ILSVRC2012_img_train.tar
 token_cache
+images
+checkpoints

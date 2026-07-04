@@ -39,7 +39,8 @@ The code is structured to support multiple backbones, including CLIP, DINOv2, an
    - or use the equivalent CLI in `src/anyup/anyup.py`
 
 6. Train probes per encoder and per layer of interest:
-   - `python scripts/train_probes.py
+   - `python -m scripts.train_probes --encoder dino --layers 3 --target_type rgb --num_epochs 20`
+   - train by encoder, layer, target and num epochs.
 
 7. Run Experiments:
    - `python scripts/run_e1ANDe2.py

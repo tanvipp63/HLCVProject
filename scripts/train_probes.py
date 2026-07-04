@@ -1,6 +1,7 @@
 #imports
 from pathlib import Path
 import argparse
+from src.patch_extraction.targets import PatchTargets
 import torch
 import os
 from src.utils.config import load_config
@@ -8,6 +9,7 @@ from src.probes import MLPProbe, ProbeTrainer
 from src.probes.losses import *
 from src.encoders import DINOEncoder, CLIPEncoder, SigLIPEncoder
 from src.feature_extraction import FeatureExtractor, FeatureCache
+from torch.utils.data import TensorDataset, DataLoader
 
 #Paths
 config = load_config("configs/paths.yaml")
@@ -29,6 +31,21 @@ if __name__ == "__main__":
         default=None,
         help="Intermediate layers to extract (e.g. 3 6 9 11). Defaults to final layer only.",
     )
+    parser.add_argument(
+        "--target_type",
+        choices=["rgb", "edges", "boundaries"],
+        required=True
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=256,
+    )    
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=50,
+    )    
     args = parser.parse_args()
 
     device = torch.device(
@@ -46,6 +63,14 @@ if __name__ == "__main__":
         features_train = cache.load(args.encoder, "train", layer=layer)
         features_val = cache.load(args.encoder, "val", layer=layer)
 
+        target_generator = PatchTargets(
+            image_size=224,
+            patch_size=encoder.patch_size,
+            cache_dir=cache_dir,
+        )
+        targets_train = target_generator.load("train", args.target_type, args.encoder)
+        targets_val = target_generator.load("val", args.target_type, args.encoder)
+
         #Init probe
         probe = MLPProbe(
             input_dim=encoder.embedding_dim,
@@ -54,7 +79,7 @@ if __name__ == "__main__":
         print(f"Probe parameters : {probe.num_parameters:,}")
 
         #Configure trainer
-        criterion = RGBLoss()
+        criterion = RGBLoss() #TODO make LPIPS Loss function in class
         optimizer = torch.optim.AdamW(
             probe.parameters(),
             lr=1e-4,
@@ -67,18 +92,50 @@ if __name__ == "__main__":
             device=device,
         )        
 
-
         #Train
-        checkpoint_dir = Path("checkpoints/dino/layer3")
+        if layer == -1:
+            layer_dir = "final"
+        else:
+            layer_dir = f"layer{layer}"
+        checkpoint_dir = Path(f"{config['checkpoints_dir']}/{args.encoder}/{layer_dir}")
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        #Need to load train and val targets TODO first is have a script that generates patch targets first
+        
+        train_features = features_train["features"].reshape(-1, encoder.embedding_dim)
+        train_targets = targets_train.reshape(-1, targets_train.shape[2], encoder.patch_size, encoder.patch_size)
 
-        # history = trainer.fit(
-        #     train_loader=train_loader,
-        #     val_loader=val_loader,
-        #     epochs=50,
-        #     best_checkpoint_path=checkpoint_dir / "best.pt",
-        # )        
+        val_features = features_val["features"].reshape(-1, encoder.embedding_dim)
+        val_targets = targets_val.reshape(-1, targets_val.shape[2], encoder.patch_size, encoder.patch_size)
+        
+        train_dataset = TensorDataset(train_features, train_targets)
+        val_dataset = TensorDataset(val_features, val_targets)
 
-        #Validate
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
 
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+        )
+
+        print(f"Train features: {features_train['features'].shape}")
+        print(f"Val features:   {features_val['features'].shape}")
+        print(f"Train targets:  {targets_train.shape}")
+        print(f"Val targets:    {targets_val.shape}")
+        print(f"Training batches: {len(train_loader)}")
+        print(f"Validation batches: {len(val_loader)}")
+
+        inputs, targets = next(iter(train_loader))
+        print(f"Input batch:  {inputs.shape}")
+        print(f"Target batch: {targets.shape}")
+
+        history = trainer.fit(
+            train_loader=train_loader,
+            val_loader=val_loader,
+            epochs=args.num_epochs,
+            checkpoint_dir=checkpoint_dir,
+        )        
+        print("Training complete.")

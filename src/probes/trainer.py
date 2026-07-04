@@ -163,3 +163,5 @@ class ProbeTrainer:
         self.optimizer.load_state_dict(
             checkpoint["optimizer_state_dict"]
         )
+
+        return checkpoint
