@@ -54,7 +54,7 @@ The code is structured to support multiple backbones, including CLIP, DINOv2, an
 - `scripts/`
   - `extract_features.py` — main feature extraction script
   - `test_clip.py`, `test_dino.py`, `test_siglip.py`, `test_probe.py`, `test_patch_extractor.py` — lightweight script checks for key functionality
-  - `run_e1.py`, `run_e2.py`, `run_e3.py`, `run_e4.py` — placeholder files for experiment pipelines
+  -`run_e3.py`, `run_e4.py` — placeholder files for experiment pipelines
 
 - `src/`
   - `anyup/` — AnyUp-related CLI and helper code
