@@ -79,7 +79,12 @@ if __name__ == "__main__":
         print(f"Probe parameters : {probe.num_parameters:,}")
 
         #Configure trainer
-        criterion = RGBLoss() #TODO make LPIPS Loss function in class
+        if args.target_type == "rgb":
+            criterion = MSELoss()
+        elif args.target_type == "edges":
+            criterion = BCEWithLogitsLoss()
+        elif args.target_type == "boundaries":
+            criterion = BCEWithLogitsLoss()
         optimizer = torch.optim.AdamW(
             probe.parameters(),
             lr=1e-4,

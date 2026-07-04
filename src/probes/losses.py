@@ -3,10 +3,9 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-
-class RGBLoss(nn.Module):
+class MSELoss(nn.Module):
     """
-    Mean Squared Error loss for RGB patch reconstruction.
+    Mean Squared Error loss.
     """
 
     def __init__(self) -> None:
@@ -18,6 +17,25 @@ class RGBLoss(nn.Module):
         pred: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
+
+        return self.loss(pred, target)
+    
+class BCEWithLogitsLoss(nn.Module):
+    """
+    Binary Cross Entropy with Logits loss.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.loss = nn.BCEWithLogitsLoss()
+
+    def forward(
+        self,
+        pred: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+
+        target = target.float()
 
         return self.loss(pred, target)
 
