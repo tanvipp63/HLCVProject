@@ -1,7 +1,7 @@
-imagenet_root: C:/Users/skcha/Datasets/imagenet/
+imagenet_root: /home/hlcv_team015/datasets/imagenet
 
-cache_dir: cache/
+cache_dir: /home/hlcv_team015/HLCVProject/cache
 
-results_dir: results/
+results_dir: /home/hlcv_team015/HLCVProject/results
 
-checkpoints_dir: checkpoints/
+checkpoints_dir: /home/hlcv_team015/HLCVProject/checkpoints
