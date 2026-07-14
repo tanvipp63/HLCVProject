@@ -31,7 +31,7 @@ class SigLIPEncoder(BaseEncoder):
     def _preprocess_image(self, image):
         """Apply the SIGLIP image processor to a single image."""
         if self.processor is None:
-            self.load_model()
+            self.processor = AutoImageProcessor.from_pretrained(self.model_name)
 
         inputs = self.processor(images=image, return_tensors="pt")
         pixel_values = inputs["pixel_values"]
@@ -47,6 +47,8 @@ class SigLIPEncoder(BaseEncoder):
         """
         if self.model is None:
             self.model = AutoModel.from_pretrained(self.model_name).eval().to(self.device)
+        
+        if self.processor is None:
             self.processor = AutoImageProcessor.from_pretrained(self.model_name)
 
         return self.model
