@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import open_clip
 import torch
@@ -15,7 +15,7 @@ class CLIPEncoder(BaseEncoder):
 
     def __init__(
         self,
-        device: torch.device | str = "cpu",
+        device: Union[torch.device, str] = "cpu",
         model_name: str = "ViT-B-16",
         pretrained: str = "openai",
     ) -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from transformers import AutoImageProcessor, AutoModel
@@ -15,7 +15,7 @@ class SigLIPEncoder(BaseEncoder):
 
     def __init__(
         self,
-        device: torch.device | str = "cpu",
+        device: Union[torch.device, str] = "cpu",
         model_name: str = "google/siglip-base-patch16-224",
     ) -> None:
         self.device = torch.device(device)

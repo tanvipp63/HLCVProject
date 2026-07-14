@@ -2,13 +2,15 @@ from pathlib import Path
 
 import torch
 
+from typing import Union
+
 
 class FeatureCache:
     """
     Handles saving and loading extracted feature caches.
     """
 
-    def __init__(self, cache_dir: str | Path):
+    def __init__(self, cache_dir: Union[str, Path]):
 
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)

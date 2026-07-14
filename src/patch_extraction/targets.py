@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 import torchvision.transforms.functional as TF
@@ -39,7 +39,7 @@ class PatchTargets:
     def extract_rgb_target(
         self,
         image: torch.Tensor,
-        token_indices: Optional[int | list[int]] = None,
+        token_indices: Optional[Union[int, list[int]]] = None,
     ) -> torch.Tensor:
         """
         Extract RGB patch targets.
@@ -61,7 +61,7 @@ class PatchTargets:
     def extract_edge_target(
         self,
         image: torch.Tensor,
-        token_indices: Optional[int | list[int]] = None,
+        token_indices: Optional[Union[int, list[int]]] = None,
     ) -> torch.Tensor:
         """
         Extract edge map patches corresponding to the specified tokens.
@@ -95,7 +95,7 @@ class PatchTargets:
     def extract_boundary_target(
         self,
         image: torch.Tensor,
-        token_indices: Optional[int | list[int]] = None,
+        token_indices: Optional[Union[int, list[int]]] = None,
     ) -> torch.Tensor:
         """
         Placeholder for boundary target extraction.

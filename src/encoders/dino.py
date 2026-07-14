@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import ssl
-from typing import Optional
+from typing import Optional, Union
 
 import certifi
 import torch
@@ -21,7 +21,7 @@ class DINOEncoder(BaseEncoder):
 
     def __init__(
         self,
-        device: torch.device | str = "cpu",
+        device: Union[torch.device, str] = "cpu",
         model_name: str = "dinov2_vitb14",
     ) -> None:
 
