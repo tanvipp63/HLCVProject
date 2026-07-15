@@ -75,32 +75,26 @@ def main():
     )
 
     # ------------------------------
+    # Cache
+    # ------------------------------
+
+    cache = FeatureCache(config["cache_dir"])
+
+    # ------------------------------
     # Extract
     # ------------------------------
 
     extractor = FeatureExtractor(encoder)
 
-    output = extractor.extract(dataloader, layers=args.layers)
+    extractor.extract(
+        dataloader=dataloader,
+        cache=cache,
+        encoder_name=args.encoder,
+        split=args.split,
+        layers=args.layers,
+    )
 
-    # ------------------------------
-    # Save
-    # ------------------------------
-
-    cache = FeatureCache(config["cache_dir"])
-
-    for layer, data in output.items():
-
-        cache.save(
-            data=data,
-            encoder_name=args.encoder,
-            split=args.split,
-            layer=layer,
-        )
-
-        print(
-            f"Saved layer {layer} "
-            f"({data['features'].shape})"
-        )
+    print("Feature extraction complete.")
 
 
 if __name__ == "__main__":
