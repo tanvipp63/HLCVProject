@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import Dataset
 
 from .targets import PatchTargets
@@ -33,9 +34,7 @@ class CachedTargetDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        return self.target_generator.load_batch(
-            split=self.split,
-            target_type=self.target_type,
-            encoder_name=self.encoder_name,
-            batch_idx=idx,
-        )
+        if idx >= len(self.batch_paths):
+            raise IndexError
+
+        return torch.load(self.batch_paths[idx])

@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import Dataset
 
 from .cache import FeatureCache
@@ -33,9 +34,7 @@ class CachedFeatureDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        return self.cache.load_batch(
-            encoder_name=self.encoder_name,
-            split=self.split,
-            layer=self.layer,
-            batch_idx=idx,
-        )
+        if idx >= len(self.batch_paths):
+            raise IndexError
+
+        return torch.load(self.batch_paths[idx])
