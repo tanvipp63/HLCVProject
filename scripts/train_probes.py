@@ -61,86 +61,84 @@ if __name__ == "__main__":
     else:
         encoder = SigLIPEncoder(device)
 
-        for layer in args.layers:
+    for layer in args.layers:
 
-            # --------------------------------------------------
-            # Cached datasets
-            # --------------------------------------------------
+        # --------------------------------------------------
+        # Cached datasets
+        # --------------------------------------------------
 
-            train_feature_dataset = CachedFeatureDataset(
-                cache=cache,
-                encoder_name=args.encoder,
-                split="train",
-                layer=layer,
-            )
+        train_feature_dataset = CachedFeatureDataset(
+            cache=cache,
+            encoder_name=args.encoder,
+            split="train",
+            layer=layer,
+        )
 
-            val_feature_dataset = CachedFeatureDataset(
-                cache=cache,
-                encoder_name=args.encoder,
-                split="val",
-                layer=layer,
-            )
+        val_feature_dataset = CachedFeatureDataset(
+            cache=cache,
+            encoder_name=args.encoder,
+            split="val",
+            layer=layer,
+        )
 
-            target_generator = PatchTargets(
-                image_size=224,
-                patch_size=encoder.patch_size,
-                cache_dir=cache_dir,
-            )
+        target_generator = PatchTargets(
+            image_size=224,
+            patch_size=encoder.patch_size,
+            cache_dir=cache_dir,
+        )
 
-            train_target_dataset = CachedTargetDataset(
-                target_generator=target_generator,
-                split="train",
-                target_type=args.target_type,
-                encoder_name=args.encoder,
-            )
+        train_target_dataset = CachedTargetDataset(
+            target_generator=target_generator,
+            split="train",
+            target_type=args.target_type,
+            encoder_name=args.encoder,
+        )
 
-            val_target_dataset = CachedTargetDataset(
-                target_generator=target_generator,
-                split="val",
-                target_type=args.target_type,
-                encoder_name=args.encoder,
-            )
+        val_target_dataset = CachedTargetDataset(
+            target_generator=target_generator,
+            split="val",
+            target_type=args.target_type,
+            encoder_name=args.encoder,
+        )
 
-            assert len(train_feature_dataset) == len(train_target_dataset)
-            assert len(val_feature_dataset) == len(val_target_dataset)
+        assert len(train_feature_dataset) == len(train_target_dataset)
+        assert len(val_feature_dataset) == len(val_target_dataset)
 
-            print(f"Train cached batches: {len(train_feature_dataset)}")
-            print(f"Val cached batches:   {len(val_feature_dataset)}")
+        print(f"Train cached batches: {len(train_feature_dataset)}")
+        print(f"Val cached batches:   {len(val_feature_dataset)}")
 
-            # --------------------------------------------------
-            # Probe
-            # --------------------------------------------------
+        # --------------------------------------------------
+        # Probe
+        # --------------------------------------------------
 
-            probe = MLPProbe(
-                input_dim=encoder.embedding_dim,
-                patch_size=encoder.patch_size,
-            ).to(device)
+        probe = MLPProbe(
+            input_dim=encoder.embedding_dim,
+            patch_size=encoder.patch_size,
+        ).to(device)
 
-            print(f"Probe parameters: {probe.num_parameters:,}")
+        print(f"Probe parameters: {probe.num_parameters:,}")
 
-            # --------------------------------------------------
-            # Trainer
-            # --------------------------------------------------
+        # --------------------------------------------------
+        # Trainer
+        # --------------------------------------------------
 
-            if args.target_type == "rgb":
-                criterion = MSELoss()
-            elif args.target_type == "edges":
-                criterion = BCEWithLogitsLoss()
-            else:
-                criterion = BCEWithLogitsLoss()
+        if args.target_type == "rgb":
+            criterion = MSELoss()
+        else:
+            criterion = BCEWithLogitsLoss()
 
-            optimizer = torch.optim.AdamW(
-                probe.parameters(),
-                lr=1e-4,
-                weight_decay=1e-4,
-            )
+        optimizer = torch.optim.AdamW(
+            probe.parameters(),
+            lr=1e-4,
+            weight_decay=1e-4,
+        )
 
-            trainer = ProbeTrainer(
-                model=probe,
-                criterion=criterion,
-                optimizer=optimizer,
-                device=device,
-            )   
+        trainer = ProbeTrainer(
+            model=probe,
+            criterion=criterion,
+            optimizer=optimizer,
+            device=device,
+        )
 
         # --------------------------------------------------
         # Training
@@ -171,121 +169,121 @@ if __name__ == "__main__":
 
             train_running_loss = 0.0
             train_num_batches = 0
-        
-        for features, targets in zip(
-            train_feature_dataset,
-            train_target_dataset,
-        ):
 
-            train_features = features.reshape(
-                -1,
-                encoder.embedding_dim,
-            )
+            for features, targets in zip(
+                train_feature_dataset,
+                train_target_dataset,
+            ):
 
-            train_targets = targets.reshape(
-                -1,
-                targets.shape[2],
-                encoder.patch_size,
-                encoder.patch_size,
-            )
+                train_features = features.reshape(
+                    -1,
+                    encoder.embedding_dim,
+                )
 
-            train_dataset = TensorDataset(
-                train_features,
-                train_targets,
-            )
+                train_targets = targets.reshape(
+                    -1,
+                    targets.shape[2],
+                    encoder.patch_size,
+                    encoder.patch_size,
+                )
 
-            train_loader = DataLoader(
-                train_dataset,
-                batch_size=args.batch_size,
-                shuffle=True,
-            )
+                train_dataset = TensorDataset(
+                    train_features,
+                    train_targets,
+                )
 
-            running_loss, num_batches = trainer.train_epoch(
-                train_loader
-            )
+                train_loader = DataLoader(
+                    train_dataset,
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                )
 
-            train_running_loss += running_loss
-            train_num_batches += num_batches
-        
-        # ------------------------------
-        # Validation
-        # ------------------------------
+                running_loss, num_batches = trainer.train_epoch(
+                    train_loader
+                )
 
-        val_running_loss = 0.0
-        val_num_batches = 0
+                train_running_loss += running_loss
+                train_num_batches += num_batches
 
-        for features, targets in zip(
-            val_feature_dataset,
-            val_target_dataset,
-        ):
+            # ------------------------------
+            # Validation
+            # ------------------------------
 
-            val_features = features.reshape(
-                -1,
-                encoder.embedding_dim,
-            )
+            val_running_loss = 0.0
+            val_num_batches = 0
 
-            val_targets = targets.reshape(
-                -1,
-                targets.shape[2],
-                encoder.patch_size,
-                encoder.patch_size,
-            )
+            for features, targets in zip(
+                val_feature_dataset,
+                val_target_dataset,
+            ):
 
-            val_dataset = TensorDataset(
-                val_features,
-                val_targets,
-            )
+                val_features = features.reshape(
+                    -1,
+                    encoder.embedding_dim,
+                )
 
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=args.batch_size,
-                shuffle=False,
-            )
+                val_targets = targets.reshape(
+                    -1,
+                    targets.shape[2],
+                    encoder.patch_size,
+                    encoder.patch_size,
+                )
 
-            running_loss, num_batches = trainer.validate(
-                val_loader
-            )
+                val_dataset = TensorDataset(
+                    val_features,
+                    val_targets,
+                )
 
-            val_running_loss += running_loss
-            val_num_batches += num_batches
-        
-        train_loss = train_running_loss / train_num_batches
-        val_loss = val_running_loss / val_num_batches
+                val_loader = DataLoader(
+                    val_dataset,
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                )
 
-        # ------------------------------
-        # Save best checkpoint
-        # ------------------------------
+                running_loss, num_batches = trainer.validate(
+                    val_loader
+                )
 
-        if val_loss < best_val_loss:
+                val_running_loss += running_loss
+                val_num_batches += num_batches
 
-            best_val_loss = val_loss
+            train_loss = train_running_loss / train_num_batches
+            val_loss = val_running_loss / val_num_batches
 
-            trainer.save_checkpoint(
-                path=checkpoint_dir / "best_model.pt",
-                epoch=epoch + 1,
-                val_loss=val_loss,
-            )
+            # ------------------------------
+            # Save best checkpoint
+            # ------------------------------
+
+            if val_loss < best_val_loss:
+
+                best_val_loss = val_loss
+
+                trainer.save_checkpoint(
+                    path=checkpoint_dir / "best_model.pt",
+                    epoch=epoch + 1,
+                    val_loss=val_loss,
+                )
+
+                print(
+                    f"Saved best model at epoch {epoch + 1} "
+                    f"(val loss = {val_loss:.6f})"
+                )
+
+            # ------------------------------
+            # Scheduler
+            # ------------------------------
+
+            if trainer.scheduler is not None:
+                trainer.scheduler.step()
+
+            # ------------------------------
+            # Logging
+            # ------------------------------
 
             print(
-                f"Saved best model at epoch {epoch + 1} "
-                f"(val loss = {val_loss:.6f})"
+                f"Epoch [{epoch + 1}/{args.num_epochs}] "
+                f"| Train Loss: {train_loss:.6f} "
+                f"| Val Loss: {val_loss:.6f}"
             )
 
-        # ------------------------------
-        # Scheduler
-        # ------------------------------
-
-        if trainer.scheduler is not None:
-            trainer.scheduler.step()
-
-        # ------------------------------
-        # Logging
-        # ------------------------------
-
-        print(
-            f"Epoch [{epoch + 1}/{args.num_epochs}] "
-            f"| Train Loss: {train_loss:.6f} "
-            f"| Val Loss: {val_loss:.6f}"
-        )
-
-    print("Training complete.")
+        print(f"Training complete for layer={layer}.")
