@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 import open_clip
 import torch
+from torchvision import transforms
 
 from .base_encoder import BaseEncoder
 
@@ -59,6 +60,19 @@ class CLIPEncoder(BaseEncoder):
             self.load_model()
 
         return self.transform
+    
+    def get_target_transform(self):
+        """
+        Return the preprocessing transform for target extraction.
+
+        Applies the same spatial preprocessing as CLIP, but leaves the
+        image in raw RGB tensor format [0,1] (no normalization).
+        """
+
+        if self.transform is None:
+            self.load_model()
+
+        return transforms.Compose(self.transform.transforms[:-1])
 
     @torch.no_grad()
     def extract_features(

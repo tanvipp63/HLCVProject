@@ -54,7 +54,7 @@ if __name__ == "__main__":
     dataset = ImageNetDataset(
         root=Path(config["imagenet_root"]),
         split=args.split,
-        transform=encoder.get_transform(),
+        transform=encoder.get_target_transform(),
         max_samples=args.max_samples,
     )
 

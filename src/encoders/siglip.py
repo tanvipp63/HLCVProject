@@ -58,6 +58,26 @@ class SigLIPEncoder(BaseEncoder):
         Return a preprocessing callable for SIGLIP images.
         """
         return self._preprocess_image
+    
+    def get_target_transform(self):
+        if self.processor is None:
+            self.processor = AutoImageProcessor.from_pretrained(self.model_name)
+
+        def transform(image):
+            inputs = self.processor(
+                images=image,
+                return_tensors="pt",
+                do_normalize=False,
+            )
+
+            pixel_values = inputs["pixel_values"]
+
+            if pixel_values.ndim == 4:
+                pixel_values = pixel_values.squeeze(0)
+
+            return pixel_values
+
+        return transform
 
     @torch.no_grad()
     def extract_features(
