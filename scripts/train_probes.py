@@ -39,7 +39,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=256,
+        default=2048,
     )    
     parser.add_argument(
         "--num_epochs",

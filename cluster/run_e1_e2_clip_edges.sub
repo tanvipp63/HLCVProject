@@ -3,13 +3,13 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -m scripts.extract_features --encoder dino --split val --layers -1 3 6 9
+arguments               = -m scripts.run_e1_e2 --encoder clip --target_type edges --layers $(Layer)
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
-output                  = /home/hlcv_team015/condor_logs/extr_features_dino_val.$(ClusterId).$(ProcId).out
-error                   = /home/hlcv_team015/condor_logs/extr_features_dino_val.$(ClusterId).$(ProcId).err
-log                     = /home/hlcv_team015/condor_logs/extr_features_dino_val.$(ClusterId).log
+output                  = /home/hlcv_team015/condor_logs/e1_e2_clip_edge.$(ClusterId).$(ProcId).out
+error                   = /home/hlcv_team015/condor_logs/e1_e2_clip_edge.$(ClusterId).$(ProcId).err
+log                     = /home/hlcv_team015/condor_logs/e1_e2_clip_edge.$(ClusterId).log
 
 should_transfer_files   = YES
 
@@ -17,8 +17,13 @@ should_transfer_files   = YES
 # when_to_transfer_output = ON_EXIT
 
 request_GPUs = 1
-request_CPUs = 4
-request_memory = 12G
+request_CPUs = 2
+request_memory = 8G
 requirements = UidDomain == "cs.uni-saarland.de" 
 +WantGPUHomeMounted = true
-queue 1
+queue Layer from (
+    -1
+    3
+    6
+    9
+)
