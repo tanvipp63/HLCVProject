@@ -20,7 +20,7 @@ checkpoint_dir = Path(f"{config['checkpoints_dir']}")
 #Set up csv for results
 results_dir = config["results_dir"]
 filename = "out.csv"
-results_file = os.path.join(results_dir, "E1_and_E2", filename)
+results_file = os.path.join(results_dir, "E1_E2", filename)
 results = []
 
 #Function to reconstruct image from patches
@@ -79,7 +79,7 @@ if __name__ == "__main__":
         "--layers",
         type=int,
         nargs="+",
-        default=None,
+        default=[-1],
         help="Intermediate layers to extract (e.g. 3 6 9 11). Defaults to final layer only.",
     )
     parser.add_argument(
@@ -108,6 +108,7 @@ if __name__ == "__main__":
 
     for layer in args.layers:
         features = cache.load(args.encoder, "val", layer=layer)["features"]
+        print(f"Features shape: {features.shape}")
 
         #Load trained MLP model for the probe
         if layer == -1:
@@ -148,6 +149,7 @@ if __name__ == "__main__":
 
         targets = target_generator.load("val", args.target_type, args.encoder)
         assert predictions.shape == targets.shape
+        print(f"Predictions shape: {predictions.shape}, Targets shape: {targets.shape}")
 
         # Evaluate
         for image_idx, (pred, target) in enumerate(zip(predictions, targets)):
@@ -227,3 +229,5 @@ if __name__ == "__main__":
             writer.writeheader()
 
         writer.writerows(results)
+    
+    print(f"Wrote {len(results)} rows to {results_path}")

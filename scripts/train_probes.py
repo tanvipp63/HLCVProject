@@ -28,7 +28,7 @@ if __name__ == "__main__":
         "--layers",
         type=int,
         nargs="+",
-        default=None,
+        default=[-1],
         help="Intermediate layers to extract (e.g. 3 6 9 11). Defaults to final layer only.",
     )
     parser.add_argument(
