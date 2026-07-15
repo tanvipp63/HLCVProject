@@ -28,8 +28,6 @@ class FeatureExtractor:
         Avoids accumulating the entire dataset in RAM.
         """
 
-        labels = []
-
         for batch_idx, (images, batch_labels) in enumerate(
             tqdm(
                 dataloader,
@@ -52,15 +50,6 @@ class FeatureExtractor:
                     batch_idx=batch_idx,
                 )
 
-            labels.append(batch_labels)
-
-        labels = torch.cat(labels, dim=0)
-
-        cache.save_labels(
-            labels,
-            encoder_name,
-            split,
-        )
         print(
             f"Saved {batch_idx + 1} feature batches."
         )
