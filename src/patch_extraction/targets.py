@@ -105,35 +105,90 @@ class PatchTargets:
             "Boundary target extraction not implemented yet."
         )
     
-    def get_cache_path(
+    def get_target_dir(
         self,
         split: str,
         target_type: str,
-        encoder_name: str
+        encoder_name: str,
     ) -> Path:
 
-        target_dir = self.cache_dir / "targets" / split / encoder_name
-        target_dir.mkdir(parents=True, exist_ok=True)
+        path = (
+            self.cache_dir
+            / "targets"
+            / split
+            / encoder_name
+            / target_type
+        )
 
-        return target_dir / f"{target_type}.pt"
+        path.mkdir(parents=True, exist_ok=True)
 
-    def save(
+        return path
+
+
+    def get_batch_path(
+        self,
+        split: str,
+        target_type: str,
+        encoder_name: str,
+        batch_idx: int,
+    ) -> Path:
+
+        return (
+            self.get_target_dir(
+                split,
+                target_type,
+                encoder_name,
+            )
+            / f"batch_{batch_idx:05d}.pt"
+        )
+    
+    def save_batch(
         self,
         data: torch.Tensor,
         split: str,
         target_type: str,
-        encoder_name: str
+        encoder_name: str,
+        batch_idx: int,
     ) -> None:
 
-        path = self.get_cache_path(split, target_type, encoder_name)
-        torch.save(data, path)
+        torch.save(
+            data,
+            self.get_batch_path(
+                split,
+                target_type,
+                encoder_name,
+                batch_idx,
+            ),
+        )
 
-    def load(
+    def load_batch(
         self,
         split: str,
         target_type: str,
-        encoder_name: str
+        encoder_name: str,
+        batch_idx: int,
     ) -> torch.Tensor:
 
-        path = self.get_cache_path(split, target_type, encoder_name)
-        return torch.load(path)    
+        return torch.load(
+            self.get_batch_path(
+                split,
+                target_type,
+                encoder_name,
+                batch_idx,
+            )
+        )
+    
+    def list_batches(
+        self,
+        split: str,
+        target_type: str,
+        encoder_name: str,
+    ) -> list[Path]:
+
+        return sorted(
+            self.get_target_dir(
+                split,
+                target_type,
+                encoder_name,
+            ).glob("batch_*.pt")
+        )
