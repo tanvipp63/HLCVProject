@@ -1,15 +1,17 @@
 #imports
 from pathlib import Path
 import argparse
-from src.patch_extraction.targets import PatchTargets
+
 import torch
-import os
+from torch.utils.data import TensorDataset, DataLoader
+
 from src.utils.config import load_config
 from src.probes import MLPProbe, ProbeTrainer
 from src.probes.losses import *
 from src.encoders import DINOEncoder, CLIPEncoder, SigLIPEncoder
-from src.feature_extraction import FeatureExtractor, FeatureCache
-from torch.utils.data import TensorDataset, DataLoader
+from src.feature_extraction import FeatureCache, CachedFeatureDataset
+from src.patch_extraction import PatchTargets, CachedTargetDataset
+
 
 #Paths
 config = load_config("configs/paths.yaml")
@@ -59,85 +61,231 @@ if __name__ == "__main__":
     else:
         encoder = SigLIPEncoder(device)
 
-    for layer in args.layers:
-        features_train = cache.load(args.encoder, "train", layer=layer)
-        features_val = cache.load(args.encoder, "val", layer=layer)
+        for layer in args.layers:
 
-        target_generator = PatchTargets(
-            image_size=224,
-            patch_size=encoder.patch_size,
-            cache_dir=cache_dir,
+            # --------------------------------------------------
+            # Cached datasets
+            # --------------------------------------------------
+
+            train_feature_dataset = CachedFeatureDataset(
+                cache=cache,
+                encoder_name=args.encoder,
+                split="train",
+                layer=layer,
+            )
+
+            val_feature_dataset = CachedFeatureDataset(
+                cache=cache,
+                encoder_name=args.encoder,
+                split="val",
+                layer=layer,
+            )
+
+            target_generator = PatchTargets(
+                image_size=224,
+                patch_size=encoder.patch_size,
+                cache_dir=cache_dir,
+            )
+
+            train_target_dataset = CachedTargetDataset(
+                target_generator=target_generator,
+                split="train",
+                target_type=args.target_type,
+                encoder_name=args.encoder,
+            )
+
+            val_target_dataset = CachedTargetDataset(
+                target_generator=target_generator,
+                split="val",
+                target_type=args.target_type,
+                encoder_name=args.encoder,
+            )
+
+            assert len(train_feature_dataset) == len(train_target_dataset)
+            assert len(val_feature_dataset) == len(val_target_dataset)
+
+            print(f"Train cached batches: {len(train_feature_dataset)}")
+            print(f"Val cached batches:   {len(val_feature_dataset)}")
+
+            # --------------------------------------------------
+            # Probe
+            # --------------------------------------------------
+
+            probe = MLPProbe(
+                input_dim=encoder.embedding_dim,
+                patch_size=encoder.patch_size,
+            ).to(device)
+
+            print(f"Probe parameters: {probe.num_parameters:,}")
+
+            # --------------------------------------------------
+            # Trainer
+            # --------------------------------------------------
+
+            if args.target_type == "rgb":
+                criterion = MSELoss()
+            elif args.target_type == "edges":
+                criterion = BCEWithLogitsLoss()
+            else:
+                criterion = BCEWithLogitsLoss()
+
+            optimizer = torch.optim.AdamW(
+                probe.parameters(),
+                lr=1e-4,
+                weight_decay=1e-4,
+            )
+
+            trainer = ProbeTrainer(
+                model=probe,
+                criterion=criterion,
+                optimizer=optimizer,
+                device=device,
+            )   
+
+        # --------------------------------------------------
+        # Training
+        # --------------------------------------------------
+
+        checkpoint_dir = Path(config["checkpoints_dir"])
+
+        if layer == -1:
+            layer_dir = "final"
+        else:
+            layer_dir = f"layer{layer}"
+
+        checkpoint_dir = (
+            checkpoint_dir
+            / args.target_type
+            / args.encoder
+            / layer_dir
         )
-        targets_train = target_generator.load("train", args.target_type, args.encoder)
-        targets_val = target_generator.load("val", args.target_type, args.encoder)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-        #Init probe
-        probe = MLPProbe(
-            input_dim=encoder.embedding_dim,
-            patch_size=encoder.patch_size,
-        ).to(device)
-        print(f"Probe parameters : {probe.num_parameters:,}")
+        best_val_loss = float("inf")
 
-        #Configure trainer
-        if args.target_type == "rgb":
-            criterion = MSELoss()
-        elif args.target_type == "edges":
-            criterion = BCEWithLogitsLoss()
-        elif args.target_type == "boundaries":
-            criterion = BCEWithLogitsLoss()
-        optimizer = torch.optim.AdamW(
-            probe.parameters(),
-            lr=1e-4,
-            weight_decay=1e-4,
-        )
-        trainer = ProbeTrainer(
-            model=probe,
-            criterion=criterion,
-            optimizer=optimizer,
-            device=device,
-        )        
+        for epoch in range(args.num_epochs):
 
-        #Train
-        checkpoint_dir = Path(f"{config['checkpoints_dir']}")
-        train_features = features_train["features"].reshape(-1, encoder.embedding_dim)
-        train_targets = targets_train.reshape(-1, targets_train.shape[2], encoder.patch_size, encoder.patch_size)
+            # ------------------------------
+            # Train
+            # ------------------------------
 
-        val_features = features_val["features"].reshape(-1, encoder.embedding_dim)
-        val_targets = targets_val.reshape(-1, targets_val.shape[2], encoder.patch_size, encoder.patch_size)
+            train_running_loss = 0.0
+            train_num_batches = 0
         
-        train_dataset = TensorDataset(train_features, train_targets)
-        val_dataset = TensorDataset(val_features, val_targets)
+        for features, targets in zip(
+            train_feature_dataset,
+            train_target_dataset,
+        ):
 
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=args.batch_size,
-            shuffle=True,
+            train_features = features.reshape(
+                -1,
+                encoder.embedding_dim,
+            )
+
+            train_targets = targets.reshape(
+                -1,
+                targets.shape[2],
+                encoder.patch_size,
+                encoder.patch_size,
+            )
+
+            train_dataset = TensorDataset(
+                train_features,
+                train_targets,
+            )
+
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+            )
+
+            running_loss, num_batches = trainer.train_epoch(
+                train_loader
+            )
+
+            train_running_loss += running_loss
+            train_num_batches += num_batches
+        
+        # ------------------------------
+        # Validation
+        # ------------------------------
+
+        val_running_loss = 0.0
+        val_num_batches = 0
+
+        for features, targets in zip(
+            val_feature_dataset,
+            val_target_dataset,
+        ):
+
+            val_features = features.reshape(
+                -1,
+                encoder.embedding_dim,
+            )
+
+            val_targets = targets.reshape(
+                -1,
+                targets.shape[2],
+                encoder.patch_size,
+                encoder.patch_size,
+            )
+
+            val_dataset = TensorDataset(
+                val_features,
+                val_targets,
+            )
+
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=args.batch_size,
+                shuffle=False,
+            )
+
+            running_loss, num_batches = trainer.validate(
+                val_loader
+            )
+
+            val_running_loss += running_loss
+            val_num_batches += num_batches
+        
+        train_loss = train_running_loss / train_num_batches
+        val_loss = val_running_loss / val_num_batches
+
+        # ------------------------------
+        # Save best checkpoint
+        # ------------------------------
+
+        if val_loss < best_val_loss:
+
+            best_val_loss = val_loss
+
+            trainer.save_checkpoint(
+                path=checkpoint_dir / "best_model.pt",
+                epoch=epoch + 1,
+                val_loss=val_loss,
+            )
+
+            print(
+                f"Saved best model at epoch {epoch + 1} "
+                f"(val loss = {val_loss:.6f})"
+            )
+
+        # ------------------------------
+        # Scheduler
+        # ------------------------------
+
+        if trainer.scheduler is not None:
+            trainer.scheduler.step()
+
+        # ------------------------------
+        # Logging
+        # ------------------------------
+
+        print(
+            f"Epoch [{epoch + 1}/{args.num_epochs}] "
+            f"| Train Loss: {train_loss:.6f} "
+            f"| Val Loss: {val_loss:.6f}"
         )
 
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=args.batch_size,
-            shuffle=False,
-        )
-
-        print(f"Train features: {features_train['features'].shape}")
-        print(f"Val features:   {features_val['features'].shape}")
-        print(f"Train targets:  {targets_train.shape}")
-        print(f"Val targets:    {targets_val.shape}")
-        print(f"Training batches: {len(train_loader)}")
-        print(f"Validation batches: {len(val_loader)}")
-
-        inputs, targets = next(iter(train_loader))
-        print(f"Input batch:  {inputs.shape}")
-        print(f"Target batch: {targets.shape}")
-
-        history = trainer.fit(
-            train_loader=train_loader,
-            val_loader=val_loader,
-            epochs=args.num_epochs,
-            checkpoint_dir=checkpoint_dir,
-            encoder_name=args.encoder,
-            layer=layer,
-            target_type=args.target_type
-        )        
-        print("Training complete.")
+    print("Training complete.")
