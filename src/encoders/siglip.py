@@ -130,13 +130,13 @@ class SigLIPEncoder(BaseEncoder):
             return intermediates
 
         for layer_idx in layers:
-            if layer_idx < 0:
+            if layer_idx == -1:
+                intermediates[-1] = outputs.last_hidden_state.detach().cpu()
                 continue
-
+            
             if layer_idx + 1 < len(hidden_states):
-                hidden_state = hidden_states[layer_idx + 1]
-                intermediates[layer_idx] = hidden_state.detach().cpu()
+                intermediates[layer_idx] = hidden_states[layer_idx + 1].detach().cpu()
             else:
-                intermediates[layer_idx] = torch.empty(0)
+                raise ValueError(f"Layer {layer_idx} does not exist. Model has {len(hidden_states)-1} hidden layers")
 
         return intermediates
