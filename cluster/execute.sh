@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # Path to the `.py` file you want to run
-PYTHON_SCRIPT_PATH="/home/hlcv_team015/HLCVProject/scripts/"
+PROJECT_ROOT="/home/hlcv_team015/HLCVProject/"
 # Path to the Python binary of the conda environment
-CONDA_PYTHON_BINARY_PATH="/home/hlcv_team015/miniconda3/envs/hlcv/bin/python"
+PYTHON="/home/hlcv_team015/miniconda3/envs/hlcv310/bin/python"
 
-cd $PYTHON_SCRIPT_PATH
-$CONDA_PYTHON_BINARY_PATH "$@"
+cd $PROJECT_ROOT
+$PYTHON "$@"

@@ -1,50 +1,170 @@
 from pathlib import Path
+from typing import Union
 
 import torch
 
 
 class FeatureCache:
     """
-    Handles saving and loading extracted feature caches.
+    Handles saving and loading feature batches.
+
+    Each split contains:
+
+    labels.pt
+
+    Each layer directory contains:
+
+    batch_00000.pt
+    batch_00001.pt
+    ...
     """
 
-    def __init__(self, cache_dir: str | Path):
+    def __init__(self, cache_dir: Union[str, Path]):
 
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_cache_path(
+    # ------------------------------------------------------------------
+    # Directory helpers
+    # ------------------------------------------------------------------
+
+    def get_layer_dir(
         self,
         encoder_name: str,
         split: str,
         layer: int = -1,
     ) -> Path:
-        """
-        Returns the cache file path.
-
-        Example:
-            cache/dino/val_final.pt
-            cache/dino/val_layer3.pt
-
-            Now changed to: cache/dino/val/layer3/features.pt
-        """
 
         encoder_dir = self.cache_dir / encoder_name / split
+
         if layer == -1:
             layer_dir = "final"
         else:
             layer_dir = f"layer{layer}"
-        encoder_dir = encoder_dir / layer_dir
-        encoder_dir.mkdir(parents=True, exist_ok=True)
 
-        # if layer == -1:
-        #     filename = f"{split}_final.pt"
-        # else:
-        #     filename = f"{split}_layer{layer}.pt"
+        path = encoder_dir / layer_dir
+        path.mkdir(parents=True, exist_ok=True)
 
-        filename = f"features.pt"
+        return path
 
-        return encoder_dir / filename
+    def get_batch_path(
+        self,
+        encoder_name: str,
+        split: str,
+        layer: int,
+        batch_idx: int,
+    ) -> Path:
+
+        return (
+            self.get_layer_dir(
+                encoder_name,
+                split,
+                layer,
+            )
+            / f"batch_{batch_idx:05d}.pt"
+        )
+
+    def get_labels_path(
+        self,
+        encoder_name: str,
+        split: str,
+    ) -> Path:
+
+        path = self.cache_dir / encoder_name / split
+        path.mkdir(parents=True, exist_ok=True)
+
+        return path / "labels.pt"
+
+    # ------------------------------------------------------------------
+    # Feature batches
+    # ------------------------------------------------------------------
+
+    def save_batch(
+        self,
+        features: torch.Tensor,
+        encoder_name: str,
+        split: str,
+        layer: int,
+        batch_idx: int,
+    ) -> None:
+
+        torch.save(
+            features,
+            self.get_batch_path(
+                encoder_name,
+                split,
+                layer,
+                batch_idx,
+            ),
+        )
+
+    def load_batch(
+        self,
+        encoder_name: str,
+        split: str,
+        layer: int,
+        batch_idx: int,
+    ) -> torch.Tensor:
+
+        return torch.load(
+            self.get_batch_path(
+                encoder_name,
+                split,
+                layer,
+                batch_idx,
+            )
+        )
+
+    def list_batches(
+        self,
+        encoder_name: str,
+        split: str,
+        layer: int,
+    ) -> list[Path]:
+
+        return sorted(
+            self.get_layer_dir(
+                encoder_name,
+                split,
+                layer,
+            ).glob("batch_*.pt")
+        )
+
+    # ------------------------------------------------------------------
+    # Labels
+    # ------------------------------------------------------------------
+
+    def save_labels(
+        self,
+        labels: torch.Tensor,
+        encoder_name: str,
+        split: str,
+    ) -> None:
+
+        torch.save(
+            labels,
+            self.get_labels_path(
+                encoder_name,
+                split,
+            ),
+        )
+
+    def load_labels(
+        self,
+        encoder_name: str,
+        split: str,
+    ) -> torch.Tensor:
+
+        return torch.load(
+            self.get_labels_path(
+                encoder_name,
+                split,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Utilities
+    # ------------------------------------------------------------------
 
     def exists(
         self,
@@ -53,39 +173,10 @@ class FeatureCache:
         layer: int = -1,
     ) -> bool:
 
-        return self.get_cache_path(
-            encoder_name,
-            split,
-            layer,
-        ).exists()
-
-    def save(
-        self,
-        data: dict,
-        encoder_name: str,
-        split: str,
-        layer: int = -1,
-    ) -> None:
-
-        path = self.get_cache_path(
-            encoder_name,
-            split,
-            layer,
-        )
-
-        torch.save(data, path)
-
-    def load(
-        self,
-        encoder_name: str,
-        split: str,
-        layer: int = -1,
-    ) -> dict:
-
-        path = self.get_cache_path(
-            encoder_name,
-            split,
-            layer,
-        )
-
-        return torch.load(path)
+        return len(
+            self.list_batches(
+                encoder_name,
+                split,
+                layer,
+            )
+        ) > 0

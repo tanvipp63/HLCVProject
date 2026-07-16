@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import ssl
-from typing import Optional
+from typing import Optional, Union
 
 import certifi
 import torch
@@ -21,7 +21,7 @@ class DINOEncoder(BaseEncoder):
 
     def __init__(
         self,
-        device: torch.device | str = "cpu",
+        device: Union[torch.device, str] = "cpu",
         model_name: str = "dinov2_vitb14",
     ) -> None:
 
@@ -72,6 +72,22 @@ class DINOEncoder(BaseEncoder):
                 mean=self.IMAGENET_MEAN,
                 std=self.IMAGENET_STD,
             ),
+        ])
+    
+    def get_target_transform(self, image_size: int = 224):
+        """
+        Return the preprocessing transform for target extraction.
+
+        Applies the same spatial preprocessing as DINOv2, but leaves the
+        image in raw RGB tensor format [0,1] (no normalization).
+        """
+
+        resize_size = int(image_size * 256 / 224)
+
+        return transforms.Compose([
+            transforms.Resize(resize_size),
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
         ])
 
     @torch.no_grad()

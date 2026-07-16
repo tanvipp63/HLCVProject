@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 
@@ -56,7 +56,7 @@ class PatchExtractor:
     def extract_patch(
         self,
         image: torch.Tensor,
-        token_indices: Optional[int | list[int]] = None,
+        token_indices: Optional[Union[int, list[int]]] = None,
     ) -> torch.Tensor:
         """
         Extract one or more image patches.

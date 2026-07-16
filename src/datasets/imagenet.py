@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from torch.utils.data import DataLoader, Subset
@@ -17,7 +17,7 @@ class ImageNetDataset:
 
     def __init__(
         self,
-        root: str | Path,
+        root: Union[str , Path],
         split: str,
         transform=None,
         max_samples: Optional[int] = None,

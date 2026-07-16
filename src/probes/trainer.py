@@ -57,7 +57,7 @@ class ProbeTrainer:
 
             running_loss += loss.item()
 
-        return running_loss / len(dataloader)
+        return running_loss, len(dataloader)
 
     @torch.no_grad()
     def validate(
@@ -86,7 +86,7 @@ class ProbeTrainer:
 
             running_loss += loss.item()
 
-        return running_loss / len(dataloader)
+        return running_loss, len(dataloader)
     
     def save_checkpoint(
         self,
@@ -105,55 +105,55 @@ class ProbeTrainer:
             path,
         )    
 
-    def fit(
-        self,
-        train_loader,
-        val_loader,
-        epochs: int,
-        checkpoint_dir: str,
-        encoder_name:str,
-        layer:int,
-        target_type:str
-    ) -> dict:
+    # def fit(
+    #     self,
+    #     train_loader,
+    #     val_loader,
+    #     epochs: int,
+    #     checkpoint_dir: str,
+    #     encoder_name:str,
+    #     layer:int,
+    #     target_type:str
+    # ) -> dict:
         
-        if layer == -1:
-            layer_dir = "final"
-        else:
-            layer_dir = f"layer{layer}"
-        checkpoint_dir = checkpoint_dir / target_type / encoder_name / layer_dir
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    #     if layer == -1:
+    #         layer_dir = "final"
+    #     else:
+    #         layer_dir = f"layer{layer}"
+    #     checkpoint_dir = checkpoint_dir / target_type / encoder_name / layer_dir
+    #     checkpoint_dir.mkdir(parents=True, exist_ok=True)
         
-        history = {
-            "train_loss": [],
-            "val_loss": [],
-        }
-        best_val_loss = float("inf") #for saving best model
+    #     history = {
+    #         "train_loss": [],
+    #         "val_loss": [],
+    #     }
+    #     best_val_loss = float("inf") #for saving best model
 
-        for epoch in range(epochs):
+    #     for epoch in range(epochs):
 
-            train_loss = self.train_epoch(train_loader)
-            val_loss = self.validate(val_loader)
+    #         train_loss = self.train_epoch(train_loader)
+    #         val_loss = self.validate(val_loader)
 
-            history["train_loss"].append(train_loss)
-            history["val_loss"].append(val_loss)
+    #         history["train_loss"].append(train_loss)
+    #         history["val_loss"].append(val_loss)
 
-            #Save best checkpoint
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                self.save_checkpoint(Path(checkpoint_dir) / "best_model.pt", epoch + 1, val_loss)
+    #         #Save best checkpoint
+    #         if val_loss < best_val_loss:
+    #             best_val_loss = val_loss
+    #             self.save_checkpoint(Path(checkpoint_dir) / "best_model.pt", epoch + 1, val_loss)
 
-                print(f"Saved best model at epoch {epoch + 1} (val loss = {val_loss:.6f})")            
+    #             print(f"Saved best model at epoch {epoch + 1} (val loss = {val_loss:.6f})")            
 
-            if self.scheduler is not None:
-                self.scheduler.step()
+    #         if self.scheduler is not None:
+    #             self.scheduler.step()
 
-            print(
-                f"Epoch [{epoch + 1}/{epochs}] "
-                f"| Train Loss: {train_loss:.6f} "
-                f"| Val Loss: {val_loss:.6f}"
-            )
+    #         print(
+    #             f"Epoch [{epoch + 1}/{epochs}] "
+    #             f"| Train Loss: {train_loss:.6f} "
+    #             f"| Val Loss: {val_loss:.6f}"
+    #         )
 
-        return history
+    #     return history
 
     def load_checkpoint(
         self,

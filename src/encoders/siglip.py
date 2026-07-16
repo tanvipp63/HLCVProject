@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from transformers import AutoImageProcessor, AutoModel
@@ -15,7 +15,7 @@ class SigLIPEncoder(BaseEncoder):
 
     def __init__(
         self,
-        device: torch.device | str = "cpu",
+        device: Union[torch.device, str] = "cpu",
         model_name: str = "google/siglip-base-patch16-224",
     ) -> None:
         self.device = torch.device(device)
@@ -31,7 +31,7 @@ class SigLIPEncoder(BaseEncoder):
     def _preprocess_image(self, image):
         """Apply the SIGLIP image processor to a single image."""
         if self.processor is None:
-            self.load_model()
+            self.processor = AutoImageProcessor.from_pretrained(self.model_name)
 
         inputs = self.processor(images=image, return_tensors="pt")
         pixel_values = inputs["pixel_values"]
@@ -47,6 +47,8 @@ class SigLIPEncoder(BaseEncoder):
         """
         if self.model is None:
             self.model = AutoModel.from_pretrained(self.model_name).eval().to(self.device)
+        
+        if self.processor is None:
             self.processor = AutoImageProcessor.from_pretrained(self.model_name)
 
         return self.model
@@ -56,6 +58,26 @@ class SigLIPEncoder(BaseEncoder):
         Return a preprocessing callable for SIGLIP images.
         """
         return self._preprocess_image
+    
+    def get_target_transform(self):
+        if self.processor is None:
+            self.processor = AutoImageProcessor.from_pretrained(self.model_name)
+
+        def transform(image):
+            inputs = self.processor(
+                images=image,
+                return_tensors="pt",
+                do_normalize=False,
+            )
+
+            pixel_values = inputs["pixel_values"]
+
+            if pixel_values.ndim == 4:
+                pixel_values = pixel_values.squeeze(0)
+
+            return pixel_values
+
+        return transform
 
     @torch.no_grad()
     def extract_features(
@@ -108,13 +130,13 @@ class SigLIPEncoder(BaseEncoder):
             return intermediates
 
         for layer_idx in layers:
-            if layer_idx < 0:
+            if layer_idx == -1:
+                intermediates[-1] = outputs.last_hidden_state.detach().cpu()
                 continue
-
+            
             if layer_idx + 1 < len(hidden_states):
-                hidden_state = hidden_states[layer_idx + 1]
-                intermediates[layer_idx] = hidden_state.detach().cpu()
+                intermediates[layer_idx] = hidden_states[layer_idx + 1].detach().cpu()
             else:
-                intermediates[layer_idx] = torch.empty(0)
+                raise ValueError(f"Layer {layer_idx} does not exist. Model has {len(hidden_states)-1} hidden layers")
 
         return intermediates

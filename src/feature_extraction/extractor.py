@@ -17,29 +17,22 @@ class FeatureExtractor:
     def extract(
         self,
         dataloader,
+        cache,
+        encoder_name: str,
+        split: str,
         layers: Optional[list[int]] = None,
-    ) -> dict:
+    ):
         """
-        Extract features for an entire dataset.
+        Extract features and stream them to the feature cache one batch at a time.
 
-        Returns
-        -------
-        dict
-
-        {
-            layer_idx: {
-                "features": Tensor,
-                "labels": Tensor,
-            }
-        }
+        Avoids accumulating the entire dataset in RAM.
         """
 
-        features = {}
-        labels = []
-
-        for images, batch_labels in tqdm(
-            dataloader,
-            desc="Extracting features",
+        for batch_idx, (images, batch_labels) in enumerate(
+            tqdm(
+                dataloader,
+                desc="Extracting features",
+            )
         ):
 
             batch_features = self.encoder.extract_features(
@@ -49,22 +42,14 @@ class FeatureExtractor:
 
             for layer, feat in batch_features.items():
 
-                if layer not in features:
-                    features[layer] = []
+                cache.save_batch(
+                    features=feat,
+                    encoder_name=encoder_name,
+                    split=split,
+                    layer=layer,
+                    batch_idx=batch_idx,
+                )
 
-                features[layer].append(feat)
-
-            labels.append(batch_labels)
-
-        labels = torch.cat(labels, dim=0)
-
-        output = {}
-
-        for layer, feats in features.items():
-
-            output[layer] = {
-                "features": torch.cat(feats, dim=0),
-                "labels": labels,
-            }
-
-        return output
+        print(
+            f"Saved {batch_idx + 1} feature batches."
+        )
