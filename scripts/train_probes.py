@@ -52,6 +52,12 @@ if __name__ == "__main__":
         help="Maximum number of cached training batches to use. Default: use all cached batches.",
     )
     parser.add_argument(
+        "--max_val_cached_batches",
+        type=int,
+        default=None,
+        help="Maximum number of cached validation batches to use. Default: use all cached batches.",
+    )
+    parser.add_argument(
         "--num_epochs",
         type=int,
         default=50,
@@ -271,10 +277,18 @@ if __name__ == "__main__":
             val_running_loss = 0.0
             val_num_batches = 0
 
-            for features, targets in zip(
+            val_iterator = zip(
                 val_feature_dataset,
                 val_target_dataset,
-            ):
+            )
+
+            if args.max_val_cached_batches is not None:
+                val_iterator = islice(
+                    val_iterator,
+                    args.max_val_cached_batches,
+                )
+
+            for features, targets in val_iterator:
 
                 val_features = features.reshape(
                     -1,
