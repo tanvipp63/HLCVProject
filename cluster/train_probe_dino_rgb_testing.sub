@@ -3,7 +3,7 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -u -m scripts.train_probes --encoder dino --target_type rgb --layers -1 --max_train_cached_batches 500
+arguments               = -u -m scripts.train_probes --encoder dino --target_type rgb --layers -1 --max_train_cached_batches 5
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
