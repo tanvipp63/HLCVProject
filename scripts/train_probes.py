@@ -160,6 +160,10 @@ if __name__ == "__main__":
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         best_val_loss = float("inf")
+        epochs_without_improvement = 0
+
+        patience = 5
+        min_delta = 1e-3
 
         for epoch in range(args.num_epochs):
 
@@ -254,9 +258,10 @@ if __name__ == "__main__":
             # Save best checkpoint
             # ------------------------------
 
-            if val_loss < best_val_loss:
+            if val_loss < best_val_loss - min_delta:
 
                 best_val_loss = val_loss
+                epochs_without_improvement = 0
 
                 trainer.save_checkpoint(
                     path=checkpoint_dir / "best_model.pt",
@@ -268,6 +273,10 @@ if __name__ == "__main__":
                     f"Saved best model at epoch {epoch + 1} "
                     f"(val loss = {val_loss:.6f})"
                 )
+
+            else:
+
+                epochs_without_improvement += 1
 
             # ------------------------------
             # Scheduler
@@ -285,5 +294,14 @@ if __name__ == "__main__":
                 f"| Train Loss: {train_loss:.6f} "
                 f"| Val Loss: {val_loss:.6f}"
             )
+
+            if epochs_without_improvement >= patience:
+
+                print(
+                    f"Early stopping triggered after "
+                    f"{epoch + 1} epochs."
+                )
+
+                break
 
         print(f"Training complete for layer={layer}.")
