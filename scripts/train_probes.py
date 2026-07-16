@@ -131,9 +131,15 @@ if __name__ == "__main__":
         # Probe
         # --------------------------------------------------
 
+        if args.target_type == "rgb":
+            output_channels = 3
+        else:
+            output_channels = 1
+
         probe = MLPProbe(
             input_dim=encoder.embedding_dim,
             patch_size=encoder.patch_size,
+            output_channels=output_channels,
         ).to(device)
 
         print(f"Probe parameters: {probe.num_parameters:,}")

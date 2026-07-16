@@ -13,6 +13,7 @@ class MLPProbe(nn.Module):
         self,
         input_dim: int = 768,
         patch_size: int = 14,
+        output_channels: int = 3,
         hidden_dim: int = 1024,
         num_layers: int = 3,
         dropout: float = 0.1,
@@ -22,10 +23,11 @@ class MLPProbe(nn.Module):
 
         self.input_dim = input_dim
         self.patch_size = patch_size
+        self.output_channels = output_channels
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
 
-        self.output_dim = 3 * patch_size * patch_size
+        self.output_dim = output_channels * patch_size * patch_size
 
         layers = []
 
@@ -72,13 +74,18 @@ class MLPProbe(nn.Module):
             x = x.view(
                 batch_size,
                 num_tokens,
-                3,
+                self.output_channels,
                 self.patch_size,
                 self.patch_size,
             )
         else:
             x = self.mlp(x)
-            x = x.view(-1, 3, self.patch_size, self.patch_size)
+            x = x.view(
+                -1,
+                self.output_channels,
+                self.patch_size,
+                self.patch_size,
+            )
 
         return x
 
