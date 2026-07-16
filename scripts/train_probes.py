@@ -261,7 +261,7 @@ if __name__ == "__main__":
 
                 batch_time = time.time() - batch_start
 
-                if batch_idx % 1 == 0:
+                if batch_idx % 10 == 0:
                     print(
                         f"Epoch {epoch + 1} | Cached batch {batch_idx} / {effective_train_batches} | "
                         f"Batch Time: {batch_time:.2f} s", flush=True
