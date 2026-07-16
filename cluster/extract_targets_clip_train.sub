@@ -7,9 +7,9 @@ arguments               = -m scripts.extract_targets --encoder clip --split trai
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
-output                  = /home/hlcv_team015/condor_logs/extract_targets_clip_tr.$(ClusterId).$(ProcId).out
-error                   = /home/hlcv_team015/condor_logs/extract_targets_clip_tr.$(ClusterId).$(ProcId).err
-log                     = /home/hlcv_team015/condor_logs/extract_targets_clip_tr.$(ClusterId).log
+output                  = /home/hlcv_team015/condor_logs/extr_targets_clip_tr.$(ClusterId).$(ProcId).out
+error                   = /home/hlcv_team015/condor_logs/extr_targets_clip_tr.$(ClusterId).$(ProcId).err
+log                     = /home/hlcv_team015/condor_logs/extr_targets_clip_tr.$(ClusterId).log
 
 should_transfer_files   = YES
 

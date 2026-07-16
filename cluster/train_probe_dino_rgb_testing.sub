@@ -3,13 +3,13 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -u -m scripts.train_probes --encoder siglip --target_type rgb --layers $(Layer) --max_train_cached_batches 500 --max_val_cached_batches 100
+arguments               = -u -m scripts.train_probes --encoder dino --target_type rgb --layers -1 --max_train_cached_batches 5 --max_val_cached_batches 1
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
-output                  = /home/hlcv_team015/condor_logs/train_probe_siglip_rgb.$(ClusterId).$(ProcId).out
-error                   = /home/hlcv_team015/condor_logs/train_probe_siglip_rgb.$(ClusterId).$(ProcId).err
-log                     = /home/hlcv_team015/condor_logs/train_probe_siglip_rgb.$(ClusterId).log
+output                  = /home/hlcv_team015/condor_logs/train_probe_dino_rgb_tes.$(ClusterId).$(ProcId).out
+error                   = /home/hlcv_team015/condor_logs/train_probe_dino_rgb_tes.$(ClusterId).$(ProcId).err
+log                     = /home/hlcv_team015/condor_logs/train_probe_dino_rgb_tes.$(ClusterId).log
 
 stream_output = True
 stream_error = True
@@ -24,9 +24,4 @@ request_CPUs = 4
 request_memory = 16G
 requirements = UidDomain == "cs.uni-saarland.de" 
 +WantGPUHomeMounted = true
-queue Layer from (
-    -1
-    3
-    6
-    9
-)
+queue 1

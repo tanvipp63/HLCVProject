@@ -1,6 +1,8 @@
 #imports
 from pathlib import Path
 import argparse
+import time
+from itertools import islice
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader
@@ -42,12 +44,24 @@ if __name__ == "__main__":
         "--batch_size",
         type=int,
         default=2048,
-    )    
+    )
+    parser.add_argument(
+        "--max_train_cached_batches",
+        type=int,
+        default=None,
+        help="Maximum number of cached training batches to use. Default: use all cached batches.",
+    )
+    parser.add_argument(
+        "--max_val_cached_batches",
+        type=int,
+        default=None,
+        help="Maximum number of cached validation batches to use. Default: use all cached batches.",
+    )
     parser.add_argument(
         "--num_epochs",
         type=int,
         default=50,
-    )    
+    )
     args = parser.parse_args()
 
     device = torch.device(
@@ -60,6 +74,8 @@ if __name__ == "__main__":
         encoder = CLIPEncoder(device)
     else:
         encoder = SigLIPEncoder(device)
+
+    print("Starting train_probes.py", flush=True)
 
     for layer in args.layers:
 
@@ -81,6 +97,8 @@ if __name__ == "__main__":
             layer=layer,
         )
 
+        print(f"Feature datasets loaded for layer={layer}.", flush=True)
+
         target_generator = PatchTargets(
             image_size=224,
             patch_size=encoder.patch_size,
@@ -100,6 +118,8 @@ if __name__ == "__main__":
             target_type=args.target_type,
             encoder_name=args.encoder,
         )
+
+        print(f"Target datasets loaded for layer={layer}.", flush=True)
 
         assert len(train_feature_dataset) == len(train_target_dataset)
         assert len(val_feature_dataset) == len(val_target_dataset)
@@ -140,6 +160,8 @@ if __name__ == "__main__":
             device=device,
         )
 
+        print(f"Trainer initialized for layer={layer}. Beginning training.", flush=True)
+
         # --------------------------------------------------
         # Training
         # --------------------------------------------------
@@ -159,9 +181,34 @@ if __name__ == "__main__":
         )
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+        if args.max_train_cached_batches is None:
+            effective_train_batches = len(train_feature_dataset)
+        else:
+            effective_train_batches = min(
+                args.max_train_cached_batches,
+                len(train_feature_dataset),
+            )
+
+        print(
+            f"Training using {effective_train_batches} / "
+            f"{len(train_feature_dataset)} cached batches.",
+            flush=True,
+        )
+
         best_val_loss = float("inf")
+        epochs_without_improvement = 0
+
+        patience = 5
+        min_delta = 1e-3
 
         for epoch in range(args.num_epochs):
+
+            train_start = time.perf_counter()
+
+            print(
+                f"\n========== Epoch {epoch + 1}/{args.num_epochs} ==========",
+                flush=True,
+            )
 
             # ------------------------------
             # Train
@@ -170,10 +217,20 @@ if __name__ == "__main__":
             train_running_loss = 0.0
             train_num_batches = 0
 
-            for features, targets in zip(
+            train_iterator = zip(
                 train_feature_dataset,
                 train_target_dataset,
-            ):
+            )
+
+            if args.max_train_cached_batches is not None:
+                train_iterator = islice(
+                    train_iterator,
+                    args.max_train_cached_batches,
+                )
+
+            for batch_idx, (features, targets) in enumerate(train_iterator):
+
+                batch_start = time.time()
 
                 train_features = features.reshape(
                     -1,
@@ -202,8 +259,18 @@ if __name__ == "__main__":
                     train_loader
                 )
 
+                batch_time = time.time() - batch_start
+
+                if batch_idx % 10 == 0:
+                    print(
+                        f"Epoch {epoch + 1} | Cached batch {batch_idx} / {effective_train_batches} | "
+                        f"Batch Time: {batch_time:.2f} s", flush=True
+                    )
+
                 train_running_loss += running_loss
                 train_num_batches += num_batches
+
+            train_time = time.perf_counter() - train_start
 
             # ------------------------------
             # Validation
@@ -212,10 +279,20 @@ if __name__ == "__main__":
             val_running_loss = 0.0
             val_num_batches = 0
 
-            for features, targets in zip(
+            val_start = time.perf_counter()
+
+            val_iterator = zip(
                 val_feature_dataset,
                 val_target_dataset,
-            ):
+            )
+
+            if args.max_val_cached_batches is not None:
+                val_iterator = islice(
+                    val_iterator,
+                    args.max_val_cached_batches,
+                )
+
+            for features, targets in val_iterator:
 
                 val_features = features.reshape(
                     -1,
@@ -247,6 +324,9 @@ if __name__ == "__main__":
                 val_running_loss += running_loss
                 val_num_batches += num_batches
 
+            val_time = time.perf_counter() - val_start
+            epoch_time = train_time + val_time
+
             train_loss = train_running_loss / train_num_batches
             val_loss = val_running_loss / val_num_batches
 
@@ -254,9 +334,10 @@ if __name__ == "__main__":
             # Save best checkpoint
             # ------------------------------
 
-            if val_loss < best_val_loss:
+            if val_loss < best_val_loss - min_delta:
 
                 best_val_loss = val_loss
+                epochs_without_improvement = 0
 
                 trainer.save_checkpoint(
                     path=checkpoint_dir / "best_model.pt",
@@ -268,6 +349,10 @@ if __name__ == "__main__":
                     f"Saved best model at epoch {epoch + 1} "
                     f"(val loss = {val_loss:.6f})"
                 )
+
+            else:
+
+                epochs_without_improvement += 1
 
             # ------------------------------
             # Scheduler
@@ -281,9 +366,25 @@ if __name__ == "__main__":
             # ------------------------------
 
             print(
+                f"Train time: {train_time:.2f} s | "
+                f"Val time: {val_time:.2f} s | "
+                f"Epoch time: {epoch_time:.2f} s",
+                flush=True,
+            )
+
+            print(
                 f"Epoch [{epoch + 1}/{args.num_epochs}] "
                 f"| Train Loss: {train_loss:.6f} "
                 f"| Val Loss: {val_loss:.6f}"
             )
+
+            if epochs_without_improvement >= patience:
+
+                print(
+                    f"Early stopping triggered after "
+                    f"{epoch + 1} epochs."
+                )
+
+                break
 
         print(f"Training complete for layer={layer}.")

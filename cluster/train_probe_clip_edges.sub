@@ -3,13 +3,16 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -m scripts.train_probe --encoder clip --target_type edges --layers $(Layer)
+arguments               = -u -m scripts.train_probes --encoder clip --target_type edges --layers $(Layer) --max_train_cached_batches 500 --max_val_cached_batches 100
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
 output                  = /home/hlcv_team015/condor_logs/train_probe_clip_edge.$(ClusterId).$(ProcId).out
 error                   = /home/hlcv_team015/condor_logs/train_probe_clip_edge.$(ClusterId).$(ProcId).err
 log                     = /home/hlcv_team015/condor_logs/train_probe_clip_edge.$(ClusterId).log
+
+stream_output = True
+stream_error = True
 
 should_transfer_files   = YES
 
