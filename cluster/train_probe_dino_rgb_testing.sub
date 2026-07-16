@@ -3,13 +3,16 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -m scripts.extract_targets --encoder dino --split val
+arguments               = -u -m scripts.train_probes --encoder dino --target_type rgb --layers -1
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
-output                  = /home/hlcv_team015/condor_logs/extr_targets_dino_val.$(ClusterId).$(ProcId).out
-error                   = /home/hlcv_team015/condor_logs/extr_targets_dino_val.$(ClusterId).$(ProcId).err
-log                     = /home/hlcv_team015/condor_logs/extr_targets_dino_val.$(ClusterId).log
+output                  = /home/hlcv_team015/condor_logs/train_probe_dino_rgb_tes.$(ClusterId).$(ProcId).out
+error                   = /home/hlcv_team015/condor_logs/train_probe_dino_rgb_tes.$(ClusterId).$(ProcId).err
+log                     = /home/hlcv_team015/condor_logs/train_probe_dino_rgb_tes.$(ClusterId).log
+
+stream_output = True
+stream_error = True
 
 should_transfer_files   = YES
 
@@ -18,7 +21,7 @@ should_transfer_files   = YES
 
 request_GPUs = 1
 request_CPUs = 4
-request_memory = 12G
+request_memory = 16G
 requirements = UidDomain == "cs.uni-saarland.de" 
 +WantGPUHomeMounted = true
 queue 1

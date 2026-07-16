@@ -61,6 +61,8 @@ if __name__ == "__main__":
     else:
         encoder = SigLIPEncoder(device)
 
+    print("Starting train_probes.py", flush=True)
+
     for layer in args.layers:
 
         # --------------------------------------------------
@@ -81,6 +83,8 @@ if __name__ == "__main__":
             layer=layer,
         )
 
+        print(f"Feature datasets loaded for layer={layer}.", flush=True)
+
         target_generator = PatchTargets(
             image_size=224,
             patch_size=encoder.patch_size,
@@ -100,6 +104,8 @@ if __name__ == "__main__":
             target_type=args.target_type,
             encoder_name=args.encoder,
         )
+
+        print(f"Target datasets loaded for layer={layer}.", flush=True)
 
         assert len(train_feature_dataset) == len(train_target_dataset)
         assert len(val_feature_dataset) == len(val_target_dataset)
@@ -139,6 +145,8 @@ if __name__ == "__main__":
             optimizer=optimizer,
             device=device,
         )
+
+        print(f"Trainer initialized for layer={layer}. Beginning training.", flush=True)
 
         # --------------------------------------------------
         # Training

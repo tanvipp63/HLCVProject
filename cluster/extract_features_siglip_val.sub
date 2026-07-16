@@ -3,7 +3,7 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -m scripts.extract_features --encoder siglip --split val --layers -1 3 6 9
+arguments               = -m scripts.extract_features --encoder siglip --split val --layers -1
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
