@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse
 import time
+from itertools import islice
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader
@@ -43,12 +44,18 @@ if __name__ == "__main__":
         "--batch_size",
         type=int,
         default=2048,
-    )    
+    )
+    parser.add_argument(
+        "--max_train_cached_batches",
+        type=int,
+        default=None,
+        help="Maximum number of cached training batches to use. Default: use all cached batches.",
+    )
     parser.add_argument(
         "--num_epochs",
         type=int,
         default=50,
-    )    
+    )
     args = parser.parse_args()
 
     device = torch.device(
@@ -168,6 +175,20 @@ if __name__ == "__main__":
         )
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+        if args.max_train_cached_batches is None:
+            effective_train_batches = len(train_feature_dataset)
+        else:
+            effective_train_batches = min(
+                args.max_train_cached_batches,
+                len(train_feature_dataset),
+            )
+
+        print(
+            f"Training using {effective_train_batches} / "
+            f"{len(train_feature_dataset)} cached batches.",
+            flush=True,
+        )
+
         best_val_loss = float("inf")
         epochs_without_improvement = 0
 
@@ -189,8 +210,19 @@ if __name__ == "__main__":
 
             train_running_loss = 0.0
             train_num_batches = 0
-                
-            for batch_idx, (features, targets) in enumerate(zip(train_feature_dataset, train_target_dataset)):
+
+            train_iterator = zip(
+                train_feature_dataset,
+                train_target_dataset,
+            )
+
+            if args.max_train_cached_batches is not None:
+                train_iterator = islice(
+                    train_iterator,
+                    args.max_train_cached_batches,
+                )
+
+            for batch_idx, (features, targets) in enumerate(train_iterator):
 
                 batch_start = time.time()
 
@@ -225,7 +257,7 @@ if __name__ == "__main__":
 
                 if batch_idx % 100 == 0:
                     print(
-                        f"Epoch {epoch + 1} | Cached batch {batch_idx} / {len(train_feature_dataset)} | "
+                        f"Epoch {epoch + 1} | Cached batch {batch_idx} / {effective_train_batches} | "
                         f"Batch Time: {batch_time:.2f} s", flush=True
                     )
 
