@@ -1,6 +1,7 @@
 #imports
 from pathlib import Path
 import argparse
+import time
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader
@@ -175,17 +176,23 @@ if __name__ == "__main__":
 
         for epoch in range(args.num_epochs):
 
+            epoch_start = time.time()
+
+            print(
+                f"\n========== Epoch {epoch + 1}/{args.num_epochs} ==========",
+                flush=True,
+            )
+
             # ------------------------------
             # Train
             # ------------------------------
 
             train_running_loss = 0.0
             train_num_batches = 0
+                
+            for batch_idx, (features, targets) in enumerate(zip(train_feature_dataset, train_target_dataset)):
 
-            for features, targets in zip(
-                train_feature_dataset,
-                train_target_dataset,
-            ):
+                batch_start = time.time()
 
                 train_features = features.reshape(
                     -1,
@@ -213,6 +220,14 @@ if __name__ == "__main__":
                 running_loss, num_batches = trainer.train_epoch(
                     train_loader
                 )
+
+                batch_time = time.time() - batch_start
+
+                if batch_idx % 100 == 0:
+                    print(
+                        f"Epoch {epoch + 1} | Cached batch {batch_idx} / {len(train_feature_dataset)} | "
+                        f"Batch Time: {batch_time:.2f} s", flush=True
+                    )
 
                 train_running_loss += running_loss
                 train_num_batches += num_batches
@@ -296,6 +311,12 @@ if __name__ == "__main__":
             # ------------------------------
             # Logging
             # ------------------------------
+
+            epoch_time = time.time() - epoch_start
+
+            print(
+                f"Epoch time: {epoch_time:.2f} s", flush=True
+            )
 
             print(
                 f"Epoch [{epoch + 1}/{args.num_epochs}] "
