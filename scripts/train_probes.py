@@ -203,7 +203,7 @@ if __name__ == "__main__":
 
         for epoch in range(args.num_epochs):
 
-            epoch_start = time.time()
+            train_start = time.perf_counter()
 
             print(
                 f"\n========== Epoch {epoch + 1}/{args.num_epochs} ==========",
@@ -270,12 +270,16 @@ if __name__ == "__main__":
                 train_running_loss += running_loss
                 train_num_batches += num_batches
 
+            train_time = time.perf_counter() - train_start
+
             # ------------------------------
             # Validation
             # ------------------------------
 
             val_running_loss = 0.0
             val_num_batches = 0
+
+            val_start = time.perf_counter()
 
             val_iterator = zip(
                 val_feature_dataset,
@@ -320,6 +324,9 @@ if __name__ == "__main__":
                 val_running_loss += running_loss
                 val_num_batches += num_batches
 
+            val_time = time.perf_counter() - val_start
+            epoch_time = train_time + val_time
+
             train_loss = train_running_loss / train_num_batches
             val_loss = val_running_loss / val_num_batches
 
@@ -358,10 +365,11 @@ if __name__ == "__main__":
             # Logging
             # ------------------------------
 
-            epoch_time = time.time() - epoch_start
-
             print(
-                f"Epoch time: {epoch_time:.2f} s", flush=True
+                f"Train time: {train_time:.2f} s | "
+                f"Val time: {val_time:.2f} s | "
+                f"Epoch time: {epoch_time:.2f} s",
+                flush=True,
             )
 
             print(
