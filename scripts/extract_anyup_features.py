@@ -18,6 +18,7 @@ def process_split(
     upsampler,
     encoder_name: str,
     max_cached_batches: int | None,
+    micro_batch_size: int,
     device: torch.device,
 ):
 
@@ -54,33 +55,52 @@ def process_split(
 
         if batch_idx % 10 == 0:
             print(
-                f"[{split}] Batch {batch_idx} | Starting upsampling...",
+                f"[{split}] Batch {batch_idx} | "
+                f"Processing in micro-batches of {micro_batch_size}...",
                 flush=True,
             )
 
         with torch.no_grad():
 
-            hr_features = upsampler(
-                images,
-                lr_features,
-            )
+            pooled_chunks = []
 
-            _, _, H, W = hr_features.shape
-            _, _, h, w = lr_features.shape
+            for start in range(0, images.shape[0], micro_batch_size):
+                end = min(start + micro_batch_size, images.shape[0])
 
-            assert H % h == 0, f"HR height {H} not divisible by LR height {h}"
-            assert W % w == 0, f"HR width {W} not divisible by LR width {w}"
+                images_chunk = images[start:end]
+                lr_chunk = lr_features[start:end]
 
-            kernel_h = H // h
-            kernel_w = W // w
-
-            if avg_pool is None:
-                avg_pool = nn.AvgPool2d(
-                    kernel_size=(kernel_h, kernel_w),
-                    stride=(kernel_h, kernel_w),
+                hr_chunk = upsampler(
+                    images_chunk,
+                    lr_chunk,
                 )
 
-            pooled_features = avg_pool(hr_features)
+                _, _, H, W = hr_chunk.shape
+                _, _, h, w = lr_chunk.shape
+
+                assert H % h == 0, f"HR height {H} not divisible by LR height {h}"
+                assert W % w == 0, f"HR width {W} not divisible by LR width {w}"
+
+                kernel_h = H // h
+                kernel_w = W // w
+
+                if avg_pool is None:
+                    avg_pool = nn.AvgPool2d(
+                        kernel_size=(kernel_h, kernel_w),
+                        stride=(kernel_h, kernel_w),
+                    )
+
+                pooled_chunk = avg_pool(hr_chunk)
+
+                pooled_chunks.append(pooled_chunk.cpu())
+
+                del hr_chunk
+                del pooled_chunk
+
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+            pooled_features = torch.cat(pooled_chunks, dim=0)
 
         assert pooled_features.shape == lr_features.shape
 
@@ -96,7 +116,6 @@ def process_split(
             print(
                 f"[{split}] Batch {batch_idx} | "
                 f"LR: {tuple(lr_features.shape)} | "
-                f"HR: {tuple(hr_features.shape)} | "
                 f"Pooled: {tuple(pooled_features.shape)}",
                 flush=True,
             )
@@ -122,6 +141,12 @@ def main():
         "--max_val_cached_batches",
         type=int,
         default=None,
+    )
+
+    parser.add_argument(
+        "--micro_batch_size",
+        type=int,
+        default=8,
     )
 
     args = parser.parse_args()
@@ -196,8 +221,7 @@ def main():
 
     upsampler = torch.hub.load(
         "wimmerth/anyup",
-        "anyup_multi_backbone",
-        use_natten=True,
+        "anyup_multi_backbone"
     ).to(device)
 
     upsampler.eval()
@@ -214,6 +238,7 @@ def main():
         upsampler=upsampler,
         encoder_name=args.encoder,
         max_cached_batches=args.max_train_cached_batches,
+        micro_batch_size=args.micro_batch_size,
         device=device,
     )
 
@@ -229,6 +254,7 @@ def main():
         upsampler=upsampler,
         encoder_name=args.encoder,
         max_cached_batches=args.max_val_cached_batches,
+        micro_batch_size=args.micro_batch_size,
         device=device,
     )
 
