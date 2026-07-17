@@ -3,13 +3,16 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include argument
-arguments               = -m scripts.run_e1_e2 --encoder siglip --target_type rgb --layers $(Layer)
+arguments               = -u -m scripts.run_e1_e2 --encoder siglip --target_type rgb --layers $(Layer)
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
 output                  = /home/hlcv_team015/condor_logs/e1_e2_siglip_rgb.$(ClusterId).$(ProcId).out
 error                   = /home/hlcv_team015/condor_logs/e1_e2_siglip_rgb.$(ClusterId).$(ProcId).err
 log                     = /home/hlcv_team015/condor_logs/e1_e2_siglip_rgb.$(ClusterId).log
+
+stream_output = True
+stream_error = True
 
 should_transfer_files   = YES
 

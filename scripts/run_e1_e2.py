@@ -1,14 +1,16 @@
 #imports
 from pathlib import Path
 import argparse
+import time
 import torch
 import os
+from torch.utils.data import DataLoader, TensorDataset
 from src.utils.config import load_config
-from src.feature_extraction import FeatureExtractor, FeatureCache
+from src.feature_extraction import FeatureCache, CachedFeatureDataset
 from src.encoders import DINOEncoder, CLIPEncoder, SigLIPEncoder
 from src.probes import MLPProbe
-from src.patch_extraction.targets import PatchTargets
-from src.metrics import rgb, binary, segmentation
+from src.patch_extraction import PatchTargets, CachedTargetDataset
+from src.metrics import rgb, binary
 import csv
 
 #Paths
@@ -87,6 +89,11 @@ if __name__ == "__main__":
         choices=["rgb", "edges", "boundaries"],
         required=True
     )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=2048,
+    )
     args = parser.parse_args()
 
     device = torch.device(
@@ -100,15 +107,33 @@ if __name__ == "__main__":
     else:
         encoder = SigLIPEncoder(device)
 
-    target_generator = PatchTargets(
-        image_size=224,
-        patch_size=encoder.patch_size,
-        cache_dir=cache_dir,
-    )
+    print("Starting run_e1_e2.py", flush=True)
 
     for layer in args.layers:
-        features = cache.load(args.encoder, "val", layer=layer)["features"]
-        print(f"Features shape: {features.shape}")
+        print(f"\n========== Evaluating layer={layer} ==========")
+
+        feature_dataset = CachedFeatureDataset(
+            cache=cache,
+            encoder_name=args.encoder,
+            split="val",
+            layer=layer,
+        )
+
+        target_generator = PatchTargets(
+            image_size=224,
+            patch_size=encoder.patch_size,
+            cache_dir=cache_dir,
+        )
+
+        target_dataset = CachedTargetDataset(
+            target_generator=target_generator,
+            split="val",
+            target_type=args.target_type,
+            encoder_name=args.encoder,
+        )
+
+        assert len(feature_dataset) == len(target_dataset)
+        print(f"Val cached batches: {len(feature_dataset)}", flush=True)
 
         #Load trained MLP model for the probe
         if layer == -1:
@@ -116,10 +141,16 @@ if __name__ == "__main__":
         else:
             layer_dir = f"layer{layer}"
         checkpoint_path = checkpoint_dir / args.target_type / args.encoder / layer_dir / "best_model.pt"
-        
+
+        if args.target_type == "rgb":
+            output_channels = 3
+        else:
+            output_channels = 1
+
         probe = MLPProbe(
             input_dim=encoder.embedding_dim,
             patch_size=encoder.patch_size,
+            output_channels=output_channels,
         )
 
         checkpoint = torch.load(
@@ -134,74 +165,102 @@ if __name__ == "__main__":
         probe.to(device)
         probe.eval()
 
-        predictions = []
+        global_image_idx = 1
+
+        print(
+            f"Loading checkpoint: {checkpoint_path}",
+            flush=True,
+        )
+
+        print(
+            f"Running evaluation on {len(feature_dataset)} cached validation batches.",
+            flush=True,
+        )
 
         with torch.no_grad():
-            for image_features in features:
+            for batch_idx, (feature_batch, target_batch) in enumerate(
+                zip(
+                    feature_dataset,
+                    target_dataset,
+                )
+            ):
+                batch_start = time.perf_counter()
 
-                image_features = image_features.to(device)
+                feature_batch = feature_batch.to(device)
+                target_batch = target_batch.to(device)
 
-                pred = probe(image_features)
-
-                predictions.append(pred)
-        
-        predictions = torch.stack(predictions)
-
-        targets = target_generator.load("val", args.target_type, args.encoder)
-        assert predictions.shape == targets.shape
-        print(f"Predictions shape: {predictions.shape}, Targets shape: {targets.shape}")
-
-        # Evaluate
-        for image_idx, (pred, target) in enumerate(zip(predictions, targets)):
-
-            target = target.to(device)
-
-            if args.target_type == "rgb":
-
-                pred_image = reconstruct_image(
-                    pred,
-                    image_size=224,
-                    patch_size=encoder.patch_size,
+                image_loader = DataLoader(
+                    TensorDataset(feature_batch, target_batch),
+                    batch_size=args.batch_size,
+                    shuffle=False,
                 )
 
-                target_image = reconstruct_image(
-                    target,
-                    image_size=224,
-                    patch_size=encoder.patch_size,
+                if batch_idx % 10 == 0:
+                    print(
+                        f"Evaluating cached batch {batch_idx} / {len(feature_dataset)}",
+                        flush=True,
+                    )
+
+                for batch_features, batch_targets in image_loader:
+                    batch_features = batch_features.to(device)
+                    prediction_batch = probe(batch_features)
+                    assert prediction_batch.shape == batch_targets.shape
+
+                    for pred, target in zip(prediction_batch, batch_targets):
+                        if args.target_type == "rgb":
+
+                            pred_image = reconstruct_image(
+                                pred,
+                                image_size=224,
+                                patch_size=encoder.patch_size,
+                            )
+
+                            target_image = reconstruct_image(
+                                target,
+                                image_size=224,
+                                patch_size=encoder.patch_size,
+                            )
+
+                            psnr = rgb.psnr(pred_image, target_image)
+                            ssim = rgb.ssim(pred_image, target_image)
+                            mse = rgb.mse(pred_image, target_image)
+
+                            results.append({
+                                "encoder": args.encoder,
+                                "layer": layer,
+                                "target": args.target_type,
+                                "image": global_image_idx,
+                                "psnr": psnr,
+                                "ssim": ssim,
+                                "mse": mse,
+                                "f1": None,
+                                "iou": None,
+                            })
+
+                        else:
+
+                            f1 = binary.dice_score(pred, target)
+                            iou = binary.iou_score(pred, target)
+
+                            results.append({
+                                "encoder": args.encoder,
+                                "layer": layer,
+                                "target": args.target_type,
+                                "image": global_image_idx,
+                                "psnr": None,
+                                "ssim": None,
+                                "mse": None,
+                                "f1": f1.item(),
+                                "iou": iou.item(),
+                            })
+
+                        global_image_idx += 1
+
+                batch_time = time.perf_counter() - batch_start
+                print(
+                    f"Layer {layer} | Cached batch {batch_idx} / {len(feature_dataset)} | Batch Time: {batch_time:.2f} s",
+                    flush=True,
                 )
-
-                psnr = rgb.psnr(pred_image, target_image)
-                ssim = rgb.ssim(pred_image, target_image)
-                mse = rgb.mse(pred_image, target_image)
-
-                results.append({
-                    "encoder": args.encoder,
-                    "layer": layer,
-                    "target": args.target_type,
-                    "image": image_idx+1, #imagenet indexes start from 1
-                    "psnr": psnr,
-                    "ssim": ssim,
-                    "mse": mse,
-                    "f1": None,
-                    "iou": None,
-                })
-
-            else:
-
-                f1 = binary.dice_score(pred, target)
-                iou = binary.iou_score(pred, target)
-
-                results.append({
-                    "encoder": args.encoder,
-                    "layer": layer,
-                    "target": args.target_type,
-                    "image": image_idx,
-                    "psnr": None,
-                    "ssim": None,
-                    "mse": None,
-                    "f1": f1.item(),
-                    "iou": iou.item(),
-                })
     
 
 
