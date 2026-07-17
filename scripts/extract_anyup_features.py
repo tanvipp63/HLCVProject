@@ -52,6 +52,12 @@ def process_split(
         images = images.to(device, non_blocking=True)
         lr_features = lr_features.to(device, non_blocking=True)
 
+        if batch_idx % 10 == 0:
+            print(
+                f"[{split}] Batch {batch_idx} | Starting upsampling...",
+                flush=True,
+            )
+
         with torch.no_grad():
 
             hr_features = upsampler(
