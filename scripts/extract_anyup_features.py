@@ -50,6 +50,16 @@ def process_split(
             batch_idx=batch_idx,
         )
 
+        #
+        # Reshape cached features from (B, N, C) to (B, C, H, W)
+        # N = H * W (number of patches)
+        # For 224x224 images with patch_size=14: N=256, H=W=16, C=768
+        #
+        B, N, C = lr_features.shape
+        side = int(N ** 0.5)
+        assert side * side == N, f"N={N} is not a perfect square (B={B}, N={N}, C={C})"
+        lr_features = lr_features.transpose(1, 2).reshape(B, C, side, side)
+
         if batch_idx % 10 == 0:
             print(
                 f"[{split}] Batch {batch_idx} | "
@@ -85,6 +95,10 @@ def process_split(
                         flush=True,
                     )
 
+                # Temporary debug: verify shapes are 4D before AnyUp
+                assert images_chunk.ndim == 4, f"images_chunk should be 4D, got {images_chunk.ndim}D: {images_chunk.shape}"
+                assert lr_chunk.ndim == 4, f"lr_chunk should be 4D, got {lr_chunk.ndim}D: {lr_chunk.shape}"
+
                 hr_chunk = upsampler(
                     images_chunk,
                     lr_chunk,
@@ -117,7 +131,25 @@ def process_split(
 
             pooled_features = torch.cat(pooled_chunks, dim=0)
 
-        assert pooled_features.shape == lr_features.shape
+        #
+        # Reshape pooled features back to token format (B, N, C)
+        # to match the original cache format exactly.
+        # This ensures run_e3.py can load both caches identically.
+        #
+        # From: (B, C, H, W) where H=W=16
+        # To: (B, N, C) where N=H*W=256
+        #
+        B, C, H, W = pooled_features.shape
+        N = H * W
+        pooled_features = (
+            pooled_features
+            .reshape(B, C, N)
+            .transpose(1, 2)
+        )  # → (B, N, C)
+
+        # Verify shape is correct
+        assert pooled_features.shape == (B, N, C), \
+            f"Expected shape {(B, N, C)}, got {pooled_features.shape}"
 
         anyup_cache.save_batch(
             features=pooled_features.cpu(),
