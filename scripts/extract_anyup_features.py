@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse
 
+import time
 import torch
 import torch.nn as nn
 
@@ -99,10 +100,25 @@ def process_split(
                 assert images_chunk.ndim == 4, f"images_chunk should be 4D, got {images_chunk.ndim}D: {images_chunk.shape}"
                 assert lr_chunk.ndim == 4, f"lr_chunk should be 4D, got {lr_chunk.ndim}D: {lr_chunk.shape}"
 
+
+                
+                print(torch.cuda.is_available())
+                print(device)
+                print(images_chunk.device)
+                print(lr_chunk.device)
+                print(next(upsampler.parameters()).device)
+
+                print(f"Starting AnyUp forward [{start}:{end}]..")
+
+                t0 = time.perf_counter()
+
                 hr_chunk = upsampler(
                     images_chunk,
                     lr_chunk,
                 )
+
+                print(f"Finished AnyUp forward [{start}:{end}] in {time.perf_counter() - t0:.2f}s", flush=True)
+
 
                 _, _, H, W = hr_chunk.shape
                 _, _, h, w = lr_chunk.shape
