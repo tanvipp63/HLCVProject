@@ -121,11 +121,39 @@ if __name__ == "__main__":
 
         print(f"Target datasets loaded for layer={layer}.", flush=True)
 
-        assert len(train_feature_dataset) == len(train_target_dataset)
-        assert len(val_feature_dataset) == len(val_target_dataset)
+        # Compute effective batch counts after loading datasets
+        effective_train_batches = min(
+            len(train_feature_dataset),
+            len(train_target_dataset),
+        )
+        if args.max_train_cached_batches is not None:
+            effective_train_batches = min(
+                effective_train_batches,
+                args.max_train_cached_batches,
+            )
 
-        print(f"Train cached batches: {len(train_feature_dataset)}")
-        print(f"Val cached batches:   {len(val_feature_dataset)}")
+        effective_val_batches = min(
+            len(val_feature_dataset),
+            len(val_target_dataset),
+        )
+        if args.max_val_cached_batches is not None:
+            effective_val_batches = min(
+                effective_val_batches,
+                args.max_val_cached_batches,
+            )
+
+        print(
+            f"Train features: {len(train_feature_dataset)}, "
+            f"targets: {len(train_target_dataset)}, "
+            f"using: {effective_train_batches}",
+            flush=True,
+        )
+        print(
+            f"Val features: {len(val_feature_dataset)}, "
+            f"targets: {len(val_target_dataset)}, "
+            f"using: {effective_val_batches}",
+            flush=True,
+        )
 
         # --------------------------------------------------
         # Probe
@@ -187,17 +215,9 @@ if __name__ == "__main__":
         )
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-        if args.max_train_cached_batches is None:
-            effective_train_batches = len(train_feature_dataset)
-        else:
-            effective_train_batches = min(
-                args.max_train_cached_batches,
-                len(train_feature_dataset),
-            )
-
         print(
-            f"Training using {effective_train_batches} / "
-            f"{len(train_feature_dataset)} cached batches.",
+            f"Training using {effective_train_batches} cached batches. "
+            f"Validation using {effective_val_batches} cached batches.",
             flush=True,
         )
 
@@ -228,11 +248,10 @@ if __name__ == "__main__":
                 train_target_dataset,
             )
 
-            if args.max_train_cached_batches is not None:
-                train_iterator = islice(
-                    train_iterator,
-                    args.max_train_cached_batches,
-                )
+            train_iterator = islice(
+                train_iterator,
+                effective_train_batches,
+            )
 
             for batch_idx, (features, targets) in enumerate(train_iterator):
 
@@ -292,11 +311,10 @@ if __name__ == "__main__":
                 val_target_dataset,
             )
 
-            if args.max_val_cached_batches is not None:
-                val_iterator = islice(
-                    val_iterator,
-                    args.max_val_cached_batches,
-                )
+            val_iterator = islice(
+                val_iterator,
+                effective_val_batches,
+            )
 
             for features, targets in val_iterator:
 
