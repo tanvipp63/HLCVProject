@@ -1,6 +1,7 @@
 #imports
 from pathlib import Path
 import argparse
+import time
 import torch
 import os
 from torch.utils.data import DataLoader, TensorDataset
@@ -106,7 +107,11 @@ if __name__ == "__main__":
     else:
         encoder = SigLIPEncoder(device)
 
+    print("Starting run_e1_e2.py", flush=True)
+
     for layer in args.layers:
+        print(f"\n========== Evaluating layer={layer} ==========")
+
         feature_dataset = CachedFeatureDataset(
             cache=cache,
             encoder_name=args.encoder,
@@ -128,7 +133,7 @@ if __name__ == "__main__":
         )
 
         assert len(feature_dataset) == len(target_dataset)
-        print(f"Val cached batches: {len(feature_dataset)}")
+        print(f"Val cached batches: {len(feature_dataset)}", flush=True)
 
         #Load trained MLP model for the probe
         if layer == -1:
@@ -162,11 +167,25 @@ if __name__ == "__main__":
 
         global_image_idx = 1
 
+        print(
+            f"Loading checkpoint: {checkpoint_path}",
+            flush=True,
+        )
+
+        print(
+            f"Running evaluation on {len(feature_dataset)} cached validation batches.",
+            flush=True,
+        )
+
         with torch.no_grad():
-            for feature_batch, target_batch in zip(
-                feature_dataset,
-                target_dataset,
+            for batch_idx, (feature_batch, target_batch) in enumerate(
+                zip(
+                    feature_dataset,
+                    target_dataset,
+                )
             ):
+                batch_start = time.perf_counter()
+
                 feature_batch = feature_batch.to(device)
                 target_batch = target_batch.to(device)
 
@@ -175,6 +194,12 @@ if __name__ == "__main__":
                     batch_size=args.batch_size,
                     shuffle=False,
                 )
+
+                if batch_idx % 10 == 0:
+                    print(
+                        f"Evaluating cached batch {batch_idx} / {len(feature_dataset)}",
+                        flush=True,
+                    )
 
                 for batch_features, batch_targets in image_loader:
                     batch_features = batch_features.to(device)
@@ -230,6 +255,12 @@ if __name__ == "__main__":
                             })
 
                         global_image_idx += 1
+
+                batch_time = time.perf_counter() - batch_start
+                print(
+                    f"Layer {layer} | Cached batch {batch_idx} / {len(feature_dataset)} | Batch Time: {batch_time:.2f} s",
+                    flush=True,
+                )
     
 
 
