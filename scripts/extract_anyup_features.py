@@ -37,11 +37,11 @@ def process_split(
         #
         # Depending on ImageNetDataset, this will either be:
         #
-        # images, labels = batch
+        # images, labels = batch (tuple)
         # or
-        # images = batch
+        # images = batch (single tensor)
         #
-        images = batch[0]
+        images = batch[0] if isinstance(batch, (list, tuple)) else batch
 
         lr_features = encoder_cache.load_batch(
             encoder_name=encoder_name,
@@ -49,6 +49,13 @@ def process_split(
             layer=-1,
             batch_idx=batch_idx,
         )
+
+        if batch_idx % 10 == 0:
+            print(
+                f"[{split}] Batch {batch_idx} | "
+                f"Initial shapes - images: {images.shape} | lr_features: {lr_features.shape}",
+                flush=True,
+            )
 
         images = images.to(device, non_blocking=True)
         lr_features = lr_features.to(device, non_blocking=True)
@@ -69,6 +76,14 @@ def process_split(
 
                 images_chunk = images[start:end]
                 lr_chunk = lr_features[start:end]
+
+                if batch_idx % 10 == 0:
+                    print(
+                        f"  Micro-batch [{start}:{end}] | "
+                        f"images_chunk: {images_chunk.shape} | "
+                        f"lr_chunk: {lr_chunk.shape}",
+                        flush=True,
+                    )
 
                 hr_chunk = upsampler(
                     images_chunk,
