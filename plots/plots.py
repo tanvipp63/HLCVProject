@@ -5,7 +5,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import argparse
-#use pandas and seaborn for plotting
+#generate e1 and e2 plots with:
+#python plots.py --target_type rgb --experiment e1_e2 --palette Set2 --point_size 7
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plotting script for data, by experiment")
