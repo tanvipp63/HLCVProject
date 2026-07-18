@@ -81,8 +81,6 @@ if __name__ == "__main__":
     if final_layer_mask.any():
         df.loc[final_layer_mask, "layer"] = args.num_layers
 
-    os.makedirs("plots", exist_ok=True)
-
     # Pretty-name lookups for titles/axis labels
     metric_names = {
         "psnr": "PSNR",
