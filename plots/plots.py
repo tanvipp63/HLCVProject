@@ -1,12 +1,11 @@
 #imports
-from glob import glob
 import os
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import argparse
 #generate e1 and e2 plots with:
-#python plots.py --target_type rgb --experiment e1_e2 --palette Set2 --point_size 7
+#python plots.py --target_type rgb --experiment e1_e2 --palette Set2 --point_size 7 --font_size 16
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plotting script for data, by experiment")
@@ -49,6 +48,12 @@ if __name__ == "__main__":
         help="DPI to use when saving raster info inside the SVG figure (affects figure sizing crispness).",
     )
     parser.add_argument(
+        "--font_size",
+        type=float,
+        default=12,
+        help="Base font size (in points) for axis labels, tick labels, and legend text. The title is scaled up from this.",
+    )
+    parser.add_argument(
         "--num_layers",
         type=int,
         default=12,
@@ -60,19 +65,19 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    sns.set_theme(style=args.style)
+    sns.set_theme(style=args.style, font_scale=args.font_size / 10)
 
     #Get data to plot
-    results_dir = f"data/{args.experiment}/{args.target_type}"
-    csvs = glob(f"{results_dir}/*.csv")  # csvs are named by encoder i.e. dino.csv, clip.csv, siglip.csv
+    results_dir = f"data/{args.experiment}"
+    csv_path = f"{results_dir}/{args.target_type}.csv"
 
-    if not csvs:
+    if not os.path.exists(csv_path):
         raise FileNotFoundError(
-            f"No CSV files found in {results_dir}. Expected files like dino.csv, clip.csv, siglip.csv."
+            f"CSV file not found: {csv_path}"
         )
 
-    # Load and concatenate all encoder csvs together (each row already has an 'encoder' column)
-    df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
+    # Single CSV holding all encoders, distinguished by the 'encoder' column
+    df = pd.read_csv(csv_path)
 
     # layer == -1 is Python-style shorthand for "the final layer", i.e. the output after the
     # last transformer block. DINOv2, CLIP, and SigLIP are all run here in their ViT-B config
@@ -132,10 +137,15 @@ if __name__ == "__main__":
                 processed_label = processed_names.get(processed, processed)
                 target_label = target_names.get(args.target_type, args.target_type)
 
-                ax.set_title(f"{target_label}: {processed_label} {metric_label} by Layer")
-                ax.set_xlabel("Layer")
-                ax.set_ylabel(f"{processed_label} {metric_label}")
-                ax.legend(title="Encoder")
+                ax.set_title(
+                    f"{target_label}: {processed_label} {metric_label} by Layer",
+                    fontsize=args.font_size * 1.2,
+                )
+                ax.set_xlabel("Layer", fontsize=args.font_size)
+                ax.set_ylabel(f"{processed_label} {metric_label}", fontsize=args.font_size)
+                ax.tick_params(axis="both", labelsize=args.font_size * 0.9)
+                legend = ax.legend(title="Encoder", fontsize=args.font_size * 0.9)
+                legend.get_title().set_fontsize(args.font_size * 0.9)
 
                 # Mark the remapped final-layer tick so it reads as "final", not just a number
                 layer_ticks = sorted(agg["layer"].unique())
