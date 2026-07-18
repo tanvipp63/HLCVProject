@@ -3,7 +3,7 @@ docker_image            = nvidia/cuda:11.4.3-runtime-ubuntu20.04
 executable              = execute.sh
 
 # Python file to run, can also include arguments
-arguments               = -u -m scripts.run_e3 --encoder dino --target_type rgb --max_val_cached_batches 100
+arguments               = -u -m scripts.run_e3 --encoder dino --target_type rgb --layers $(Layer) --max_val_cached_batches 100
 
 # Paths to output, error, and log files
 # Make sure all the parent directories exist
@@ -21,4 +21,9 @@ request_CPUs = 1
 request_memory = 8G
 requirements = UidDomain == "cs.uni-saarland.de" 
 +WantGPUHomeMounted = true
-queue 1
+queue Layer from (
+	-1
+	3
+	6
+	9
+)
