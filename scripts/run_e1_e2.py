@@ -250,8 +250,8 @@ if __name__ == "__main__":
                                 "psnr": None,
                                 "ssim": None,
                                 "mse": None,
-                                "f1": f1.item(),
-                                "iou": iou.item(),
+                                "f1": f1,
+                                "iou": iou,
                             })
 
                         global_image_idx += 1
