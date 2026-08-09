@@ -239,8 +239,8 @@ if __name__ == "__main__":
 
                         else:
 
-                            f1 = binary.dice_score(pred, target)
-                            iou = binary.iou_score(pred, target)
+                            f1 = binary.dice_score(torch.sigmoid(pred), target)
+                            iou = binary.iou_score(torch.sigmoid(pred), target)
 
                             results.append({
                                 "encoder": args.encoder,
