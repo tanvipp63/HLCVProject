@@ -180,8 +180,8 @@ def evaluate_probe(
 
                     else:
 
-                        f1 = binary.dice_score(pred, target)
-                        iou = binary.iou_score(pred, target)
+                        f1 = binary.dice_score(torch.sigmoid(pred), target)
+                        iou = binary.iou_score(torch.sigmoid(pred), target)
 
                         batch_results.append({
                             "encoder": encoder_name,
@@ -192,8 +192,8 @@ def evaluate_probe(
                             "psnr": None,
                             "ssim": None,
                             "mse": None,
-                            "f1": f1.item(),
-                            "iou": iou.item(),
+                            "f1": f1,
+                            "iou": iou,
                         })
 
                     global_image_idx += 1
