@@ -18,6 +18,7 @@ def process_split(
     anyup_cache: FeatureCache,
     upsampler,
     encoder_name: str,
+    layer: int,
     max_cached_batches: int | None,
     micro_batch_size: int,
     device: torch.device,
@@ -47,7 +48,7 @@ def process_split(
         lr_features = encoder_cache.load_batch(
             encoder_name=encoder_name,
             split=split,
-            layer=-1,
+            layer=layer,
             batch_idx=batch_idx,
         )
 
@@ -171,7 +172,7 @@ def process_split(
             features=pooled_features.cpu(),
             encoder_name=encoder_name,
             split=split,
-            layer=-1,
+            layer=layer,
             batch_idx=batch_idx,
         )
 
@@ -192,6 +193,13 @@ def main():
         "--encoder",
         choices=["dino", "clip", "siglip"],
         required=True,
+    )
+
+    parser.add_argument(
+        "--layer",
+        type=int,
+        default=-1,
+        help="Encoder layer to process. Use -1 for final layer (default).",
     )
 
     parser.add_argument(
@@ -234,6 +242,7 @@ def main():
         encoder = SigLIPEncoder(device)
 
     print(f"\nEncoder: {args.encoder}", flush=True)
+    print(f"Layer: {args.layer}", flush=True)
 
     #
     # Datasets
@@ -300,6 +309,7 @@ def main():
         anyup_cache=anyup_cache,
         upsampler=upsampler,
         encoder_name=args.encoder,
+        layer=args.layer,
         max_cached_batches=args.max_train_cached_batches,
         micro_batch_size=args.micro_batch_size,
         device=device,
@@ -316,6 +326,7 @@ def main():
         anyup_cache=anyup_cache,
         upsampler=upsampler,
         encoder_name=args.encoder,
+        layer=args.layer,
         max_cached_batches=args.max_val_cached_batches,
         micro_batch_size=args.micro_batch_size,
         device=device,
